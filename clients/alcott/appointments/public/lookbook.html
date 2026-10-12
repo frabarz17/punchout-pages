@@ -551,9 +551,8 @@ function closeCart() {
 function sendCart() {
   if (!_cart.length) return;
   const payload = {
-    command: 'ProductsSelected',
-    debugMode: 0,
-    products: _cart.map(x => ({ productId: x.id, productName: x.name, imageUrl: x.img, price: x.price, productUrl: x.link })),
+    command: 'AddToCart', debugMode: 0, count: _cart.length,
+    products: _cart.map(x => ({ sku: x.id, quantity: 1, price: parseFloat(x.price) || 0, currency: 'EUR', image: x.img })),
   };
   if (_debugMode) {
     _pendingPayload = payload;
@@ -565,23 +564,21 @@ function sendCart() {
 }
 
 function _doSend(payload) {
-  console.log('[PunchOut ProductsSelected]', JSON.stringify(payload, null, 2));
-  if (window.webkit?.messageHandlers?.ProductsSelected) {
-    window.webkit.messageHandlers.ProductsSelected.postMessage(JSON.stringify(payload));
-    showToast(`${payload.products.length} prodott${payload.products.length > 1 ? 'i inviati' : 'o inviato'} al POS`);
-    closeCart();
-    _cart = [];
-    updateFab();
-    document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
-  } else {
-    // Outside WKWebView: simulate success (demo / browser preview)
-    const n = payload.products.length;
-    showToast(`${n} prodott${n > 1 ? 'i aggiunti' : 'o aggiunto'} al carrello`);
-    closeCart();
-    _cart = [];
-    updateFab();
-    document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
+  console.log('[PunchOut AddToCart]', JSON.stringify(payload, null, 2));
+  const n = payload.count;
+  const successMsg = `${n} articolo${n > 1 ? 'i' : ''} aggiunto${n > 1 ? 'i' : ''} al carrello`;
+  try {
+    window.webkit.messageHandlers.AddToCart.postMessage(JSON.stringify(payload));
+    showToast(successMsg);
+  } catch(e) {
+    // Outside WKWebView (demo / browser preview)
+    showToast(successMsg + ' (demo)');
+    console.log('[PunchOut AddToCart — webkit non disponibile, payload loggato]');
   }
+  closeCart();
+  _cart = [];
+  updateFab();
+  document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
 }
 
 function debugSend() {
