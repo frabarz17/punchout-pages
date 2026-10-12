@@ -1,6 +1,5 @@
 import { handler, HttpError } from '../../../lib/http.js';
 import { getAppointmentByCode, getAppointmentById, updateAppointment, toDashboard } from '../../../lib/booking.js';
-import { todayIn } from '../../../lib/time.js';
 
 const SA_ID_RE = /^08p[a-zA-Z0-9]{12}([a-zA-Z0-9]{3})?$/;
 
@@ -19,7 +18,6 @@ export default handler(['POST'], async (req, res) => {
     const tz = r.ServiceTerritory?.OperatingHours?.TimeZone || 'Europe/Rome';
     if (['Canceled', 'Cannot Complete'].includes(r.Status)) throw new HttpError(409, 'Questo appuntamento è stato annullato.');
     if (r.Status === 'Completed') throw new HttpError(409, 'Questo appuntamento è già concluso.');
-    if (a.preferred_date !== todayIn(tz)) throw new HttpError(409, `Il tuo appuntamento è previsto per il ${a.preferred_date.split('-').reverse().join('/')}.`);
     if (!r.Arrived_At__c) await updateAppointment(r.Id, { Arrived_At__c: new Date().toISOString() });
     return res.status(200).json({ ok: true, name: a.name, preferred_date: a.preferred_date,
       preferred_time: a.preferred_time, store_name: a.store_name });

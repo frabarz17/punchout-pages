@@ -128,9 +128,9 @@ export function toDashboard(r, tz) {
   };
 }
 
-export async function listAppointments(store, date) {
+export async function listAppointments(store, date, days = 1) {
   const start = localToUtc(date, '00:00', store.tz).toISOString();
-  const end = localToUtc(addDays(date, 1), '00:00', store.tz).toISOString();
+  const end = localToUtc(addDays(date, days), '00:00', store.tz).toISOString();
   const rows = await query(`SELECT ${SA_FIELDS} FROM ServiceAppointment
     WHERE ServiceTerritoryId = ${q(store.id)} AND SchedStartTime >= ${start} AND SchedStartTime < ${end}
     AND Booking_Code__c != null AND Status NOT IN ('Canceled', 'Cannot Complete') ORDER BY SchedStartTime ASC`);

@@ -163,6 +163,16 @@
   }
   .btn-test:hover { border-color: var(--pink); color: var(--pink); }
 
+  /* Days chips */
+  .days-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .day-chip {
+    padding: 5px 14px; border-radius: 50px; border: 1.5px solid var(--border);
+    background: none; color: var(--weak); font-size: .72rem; font-weight: 700;
+    cursor: pointer; transition: all .15s; font-family: inherit; white-space: nowrap;
+  }
+  .day-chip:hover { border-color: var(--pink); color: var(--pink); }
+  .day-chip.active { border-color: var(--pink); background: rgba(233,30,140,.12); color: var(--pink); }
+
   /* Refresh bar */
   .refresh-bar { flex-shrink: 0; text-align: center; padding: 5px;
     font-size: .62rem; color: var(--border); border-top: 1px solid var(--border); }
@@ -216,7 +226,7 @@
     <div class="header-top">
       <div class="header-left">
         <div class="header-eyebrow" id="storeLabel">Dashboard</div>
-        <div class="header-title">Appuntamenti Oggi</div>
+        <div class="header-title" id="headerTitle">Appuntamenti</div>
       </div>
       <div class="header-right">
         <div class="arrived-badge" id="arrivedBadge">
@@ -226,6 +236,13 @@
         <select class="store-select" id="storeSelect" onchange="changeStore(this.value)" style="display:none"></select>
         <button class="btn-debug" id="btnDebug" onclick="toggleDebug()">DEBUG</button>
       </div>
+    </div>
+    <div class="days-row" id="daysRow">
+      <button class="day-chip" onclick="setDays(1)">Oggi</button>
+      <button class="day-chip" onclick="setDays(3)">3 giorni</button>
+      <button class="day-chip active" onclick="setDays(7)">7 giorni</button>
+      <button class="day-chip" onclick="setDays(14)">14 giorni</button>
+      <button class="day-chip" onclick="setDays(30)">30 giorni</button>
     </div>
   </div>
 
@@ -256,6 +273,7 @@
 
 <script>
 let _data = [];
+let _days = 7;
 let _countdown = 15;
 let _timer = null;
 let _debugMode = false;
@@ -267,6 +285,16 @@ function toggleDebug() {
   document.getElementById('btnDebug').classList.toggle('active', _debugMode);
   render();
   showToast(_debugMode ? 'Debug ON' : 'Debug OFF');
+}
+
+function setDays(n) {
+  _days = n;
+  document.querySelectorAll('.day-chip').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('onclick') === `setDays(${n})`);
+  });
+  document.getElementById('headerTitle').textContent = n === 1 ? 'Appuntamenti Oggi' : `Appuntamenti — ${n} giorni`;
+  fetchData();
+  startCountdown();
 }
 
 // ── Store context: ?store=alcott-xxx (set in the POS punchout URL), fallback to selector + localStorage
@@ -309,7 +337,7 @@ async function fetchData() {
     return;
   }
   try {
-    const res = await fetch(`/api/appointments?store=${encodeURIComponent(_store)}`);
+    const res = await fetch(`/api/appointments?store=${encodeURIComponent(_store)}&days=${_days}`);
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error(data.error || 'Errore CRM');
     _data = data;
@@ -350,22 +378,43 @@ function render() {
     badge.classList.remove('visible');
   }
 
-  const allScheduled = [...arrived, ...pending];
   let html = '';
 
-  if (allScheduled.length) {
-    html += `<div class="section-hd">Programmati</div>`;
-    html += allScheduled.map(a => cardHtml(a)).join('');
+  if (_days > 1) {
+    // Group by date
+    const byDate = {};
+    for (const a of _data) {
+      const d = a.preferred_date || 'Senza data';
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(a);
+    }
+    const dates = Object.keys(byDate).sort();
+    if (!dates.length) {
+      html = '<div class="empty">Nessun appuntamento nel periodo selezionato.</div>';
+    } else {
+      for (const d of dates) {
+        const label = d === 'Senza data' ? 'Senza data' : formatDateLabel(d);
+        html += `<div class="section-hd">${label}</div>`;
+        html += byDate[d].map(a => cardHtml(a)).join('');
+      }
+    }
   } else {
-    html += `<div class="section-hd">Programmati</div><div class="empty">Nessun appuntamento in programma.</div>`;
-  }
-  if (in_progress.length) {
-    html += `<div class="section-hd">In corso</div>`;
-    html += in_progress.map(a => cardHtml(a)).join('');
-  }
-  if (done.length) {
-    html += `<div class="section-hd">Terminati</div>`;
-    html += done.map(a => cardHtml(a)).join('');
+    // Single-day view grouped by status
+    const allScheduled = [...arrived, ...pending];
+    if (allScheduled.length) {
+      html += `<div class="section-hd">Programmati</div>`;
+      html += allScheduled.map(a => cardHtml(a)).join('');
+    } else {
+      html += `<div class="section-hd">Programmati</div><div class="empty">Nessun appuntamento in programma.</div>`;
+    }
+    if (in_progress.length) {
+      html += `<div class="section-hd">In corso</div>`;
+      html += in_progress.map(a => cardHtml(a)).join('');
+    }
+    if (done.length) {
+      html += `<div class="section-hd">Terminati</div>`;
+      html += done.map(a => cardHtml(a)).join('');
+    }
   }
 
   document.getElementById('content').innerHTML = html;
@@ -522,6 +571,11 @@ function esc(s) {
 }
 function formatDate(d) { const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
 function formatDateShort(d) { const [y,m,day] = d.split('-'); return `${day}/${m}`; }
+function formatDateLabel(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace(/^./, c => c.toUpperCase());
+}
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
@@ -534,6 +588,7 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+document.getElementById('headerTitle').textContent = _days === 1 ? 'Appuntamenti Oggi' : `Appuntamenti — ${_days} giorni`;
 initStores();
 fetchData();
 startCountdown();
