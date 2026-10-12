@@ -1,10 +1,4 @@
-// Use org instance URL directly — the global api.salesforce.com gateway returns 404
-// when it can't route the request without prior org context.
-const AGENT_API_BASE_GLOBAL = 'https://api.salesforce.com/einstein/ai-agent/v1';
-function agentApiBase() {
-  const loginUrl = (process.env.AGENTFORCE_LOGIN_URL || '').replace(/\/$/, '');
-  return `${loginUrl}/einstein/ai-agent/v1`;
-}
+const AGENT_API_BASE = 'https://api.salesforce.com/einstein/ai-agent/v1';
 
 let _tokenCache = null;
 
@@ -17,13 +11,16 @@ async function ensureToken() {
     grant_type:    'client_credentials',
     client_id:     process.env.AGENTFORCE_CLIENT_ID     || '',
     client_secret: process.env.AGENTFORCE_CLIENT_SECRET || '',
+    scope:         'api chatbot_api sfap_api',
   });
   const r = await fetch(`${loginUrl}/services/oauth2/token`, {
     method: 'POST', body: params,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-  if (!r.ok) throw new Error(`Agentforce token error: ${r.status} ${await r.text()}`);
-  const d = await r.json();
+  const tokenBody = await r.text();
+  if (!r.ok) throw new Error(`Agentforce token error: ${r.status} ${tokenBody}`);
+  const d = JSON.parse(tokenBody);
+  console.log('[agentforce] token ok, scope:', d.scope);
   _tokenCache = { accessToken: d.access_token, expiresAt: Date.now() + 25 * 60 * 1000 };
   return _tokenCache.accessToken;
 }
@@ -32,7 +29,7 @@ export async function startSession(externalKey) {
   const token    = await ensureToken();
   const agentId  = process.env.AGENTFORCE_AGENT_ID || '';
   const loginUrl = (process.env.AGENTFORCE_LOGIN_URL || '').replace(/\/$/, '');
-  const url = `${agentApiBase()}/agents/${agentId}/sessions`;
+  const url = `${AGENT_API_BASE}/agents/${agentId}/sessions`;
   const payload = {
     externalSessionKey: externalKey,
     instanceConfig: { endpoint: loginUrl },
@@ -54,7 +51,7 @@ export async function startSession(externalKey) {
 
 export async function sendMessage(sfSessionId, sequenceId, text) {
   const token = await ensureToken();
-  const r = await fetch(`${agentApiBase()}/sessions/${sfSessionId}/messages`, {
+  const r = await fetch(`${AGENT_API_BASE}/sessions/${sfSessionId}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -71,7 +68,7 @@ export async function sendMessage(sfSessionId, sequenceId, text) {
 
 export async function endSession(sfSessionId) {
   const token = await ensureToken();
-  await fetch(`${agentApiBase()}/sessions/${sfSessionId}`, {
+  await fetch(`${AGENT_API_BASE}/sessions/${sfSessionId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}`, 'x-session-end-reason': 'UserRequest' },
   });
