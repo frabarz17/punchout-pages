@@ -26,17 +26,23 @@ export async function startSession(externalKey) {
   const token    = await ensureToken();
   const agentId  = process.env.AGENTFORCE_AGENT_ID || '';
   const loginUrl = (process.env.AGENTFORCE_LOGIN_URL || '').replace(/\/$/, '');
-  const r = await fetch(`${AGENT_API_BASE}/agents/${agentId}/sessions`, {
+  const url = `${AGENT_API_BASE}/agents/${agentId}/sessions`;
+  const payload = {
+    externalSessionKey: externalKey,
+    instanceConfig: { endpoint: loginUrl },
+    streamingCapabilities: { chunkTypes: ['Text'] },
+    bypassUser: true,
+  };
+  console.log('[agentforce] startSession url:', url);
+  console.log('[agentforce] startSession payload:', JSON.stringify(payload));
+  const r = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      externalSessionKey: externalKey,
-      instanceConfig: { endpoint: loginUrl },
-      streamingCapabilities: { chunkTypes: ['Text'] },
-      bypassUser: true,
-    }),
+    body: JSON.stringify(payload),
   });
-  if (!r.ok) throw new Error(`startSession error: ${r.status} ${await r.text()}`);
+  const body = await r.text();
+  console.log('[agentforce] startSession response:', r.status, body);
+  if (!r.ok) throw new Error(`startSession error: ${r.status} — ${body}`);
   return (await r.json()).sessionId;
 }
 
