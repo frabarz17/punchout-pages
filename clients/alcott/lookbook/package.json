@@ -1,6 +1,0 @@
-{
-  "name": "alcott-lookbook",
-  "version": "1.0.0",
-  "description": "Alcott product lookbook — PunchOut page for Salesforce Retail Cloud POS",
-  "engines": { "node": ">=18" }
-}
