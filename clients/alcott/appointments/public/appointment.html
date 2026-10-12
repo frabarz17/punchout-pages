@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Prenota un Appuntamento</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --pink:    #e91e8c;
+    --pink-d:  #c4167a;
+    --dark:    #1a1a1a;
+    --mid:     #2e2e2e;
+    --surface: #242424;
+    --border:  #383838;
+    --text:    #f0f0f0;
+    --weak:    #888;
+    --radius:  14px;
+  }
+  html, body { min-height: 100%; background: var(--dark); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  .page { max-width: 480px; margin: 0 auto; padding: 40px 20px 60px; }
+  .eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--pink); margin-bottom: 10px; }
+  h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; margin-bottom: 8px; }
+  h1 span { color: var(--pink); }
+  .subtitle { font-size: .88rem; color: var(--weak); line-height: 1.6; margin-bottom: 32px; }
+
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: .75rem; font-weight: 700; color: var(--weak);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  input, select, textarea {
+    width: 100%; padding: 13px 16px; border-radius: 10px;
+    background: var(--surface); border: 1.5px solid var(--border); color: var(--text);
+    font-size: .92rem; font-family: inherit; outline: none; transition: border-color .2s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--pink); }
+  input::placeholder, textarea::placeholder { color: var(--weak); }
+  select option { background: var(--dark); }
+  textarea { resize: none; height: 80px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn-submit { width: 100%; padding: 16px; border-radius: var(--radius); border: none;
+    cursor: pointer; background: var(--pink); color: #fff; font-size: 1rem; font-weight: 700;
+    letter-spacing: .02em; transition: background .15s; margin-top: 8px; }
+  .btn-submit:hover { background: var(--pink-d); }
+  .btn-submit:disabled { background: var(--border); color: var(--weak); cursor: default; }
+
+  /* Confirmation */
+  .confirm { display: none; text-align: center; padding: 20px 0; }
+  .confirm-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(233,30,140,.15);
+    margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
+  .confirm-icon svg { width: 28px; height: 28px; fill: none; stroke: var(--pink); stroke-width: 2; }
+  .confirm h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+  .confirm p { font-size: .88rem; color: var(--weak); line-height: 1.6; margin-bottom: 24px; }
+
+  .appt-id-box { background: var(--surface); border: 2px solid var(--pink); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 24px; cursor: pointer; transition: background .15s; }
+  .appt-id-box:hover { background: var(--mid); }
+  .appt-id-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em;
+    color: var(--weak); margin-bottom: 6px; }
+  .appt-id-value { font-size: 2.4rem; font-weight: 800; letter-spacing: .15em; color: var(--pink);
+    font-family: 'SF Mono', 'Fira Code', monospace; }
+  .appt-id-hint { font-size: .72rem; color: var(--weak); margin-top: 6px; }
+  .appt-id-box.copied .appt-id-hint { color: #4caf50; }
+
+  .appt-details { background: var(--surface); border-radius: var(--radius); padding: 14px 16px;
+    text-align: left; margin-bottom: 24px; }
+  .appt-detail-row { display: flex; justify-content: space-between; font-size: .82rem;
+    padding: 4px 0; }
+  .appt-detail-row:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+  .appt-detail-key { color: var(--weak); }
+  .appt-detail-val { font-weight: 600; }
+
+  .hint-box { background: var(--surface); border-radius: 10px; padding: 12px 16px;
+    font-size: .78rem; color: var(--weak); line-height: 1.55; display: flex; gap: 10px; align-items: flex-start; }
+  .hint-box svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; fill: none;
+    stroke: var(--weak); stroke-width: 2; }
+
+  .field-hint { font-size: .72rem; color: var(--weak); margin-top: 6px; min-height: 1em; }
+  select option:disabled { color: var(--weak); }
+  .error-msg { background: rgba(255,80,80,.1); border: 1px solid rgba(255,80,80,.3); border-radius: 8px;
+    padding: 10px 14px; font-size: .82rem; color: #ff5555; margin-bottom: 14px; display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div id="formView">
+    <div class="eyebrow">In-Store Experience</div>
+    <h1>Prenota il tuo<br><span>Appuntamento</span></h1>
+    <p class="subtitle">Scegli negozio, data e orario preferiti. Ti aspetteremo in negozio con tutto il tempo dedicato a te.</p>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="row-2">
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="first_name" placeholder="Mario" autocomplete="given-name"/>
+      </div>
+      <div class="form-group">
+        <label>Cognome *</label>
+        <input type="text" id="last_name" placeholder="Rossi" autocomplete="family-name"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="email" placeholder="mario@email.com" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label>Telefono</label>
+      <input type="tel" id="phone" placeholder="+39 333 000 0000" autocomplete="tel"/>
+    </div>
+    <div class="form-group">
+      <label>Negozio *</label>
+      <input type="text" id="store_search" placeholder="Cerca per città o nome negozio…" autocomplete="off" style="margin-bottom:8px"/>
+      <select id="store"><option value="">Caricamento negozi…</option></select>
+    </div>
+    <div class="row-2">
+      <div class="form-group">
+        <label>Data *</label>
+        <input type="date" id="preferred_date"/>
+      </div>
+      <div class="form-group">
+        <label>Orario *</label>
+        <select id="preferred_time">
+          <option value="">— scegli —</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-hint" id="slotHint" style="margin:-8px 0 16px"></div>
+    <div class="form-group">
+      <label>Note (opzionale)</label>
+      <textarea id="notes" placeholder="Cosa stai cercando? Occasione speciale?"></textarea>
+    </div>
+    <button class="btn-submit" id="btnSubmit" onclick="submitForm()">Prenota →</button>
+  </div>
+
+  <div class="confirm" id="confirmView">
+    <div class="confirm-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>Appuntamento confermato!</h2>
+    <p>Usa questo codice quando arrivi in negozio per il check-in rapido.</p>
+
+    <div class="appt-id-box" id="apptIdBox" onclick="copyId()">
+      <div class="appt-id-label">Il tuo codice</div>
+      <div class="appt-id-value" id="apptIdValue">——</div>
+      <div class="appt-id-hint" id="apptIdHint">Tocca per copiare</div>
+    </div>
+
+    <div class="appt-details" id="apptDetails"></div>
+
+    <div class="hint-box">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16.5"/></svg>
+      Conserva questo codice — ti verrà chiesto all'arrivo in negozio per confermare la tua presenza.
+    </div>
+
+    <button class="btn-submit" id="btnCheckin" onclick="goCheckin()" style="margin-top:16px;background:#1a1a1a;border:2px solid var(--pink);color:var(--pink);">
+      Sono già in negozio — Fai il check-in →
+    </button>
+  </div>
+</div>
+
+<script>
+// ── Stores & slots from Salesforce (via /api) ────────────────────────────────
+const storeSel  = document.getElementById('store');
+const storeSearch = document.getElementById('store_search');
+const sel       = document.getElementById('preferred_time');
+const dateInput = document.getElementById('preferred_date');
+const slotHint  = document.getElementById('slotHint');
+let _stores = [];
+const _qs = new URLSearchParams(window.location.search);
+
+// Set min date to today
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth()+1).padStart(2,'0');
+const dd = String(today.getDate()).padStart(2,'0');
+dateInput.min = `${yyyy}-${mm}-${dd}`;
+if (!dateInput.value) dateInput.value = dateInput.min;
+
+function renderStores(filter = '') {
+  const f = filter.trim().toLowerCase();
+  const current = storeSel.value;
+  const list = _stores.filter(s => !f || `${s.name} ${s.city}`.toLowerCase().includes(f));
+  storeSel.innerHTML = `<option value="">${list.length ? '— scegli il negozio —' : 'Nessun negozio trovato'}</option>` +
+    list.map(s => `<option value="${esc(s.code)}">${esc(s.city)} — ${esc(prettyName(s.name))}</option>`).join('');
+  if (list.some(s => s.code === current)) storeSel.value = current;
+  else if (list.length === 1) { storeSel.value = list[0].code; loadSlots(); }
+}
+
+async function loadStores() {
+  try {
+    const res = await fetch('/api/stores');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Errore nel caricamento negozi');
+    _stores = data.stores;
+    renderStores();
+    const pre = _qs.get('store');
+    if (pre && _stores.some(s => s.code === pre)) { storeSel.value = pre; loadSlots(); }
+  } catch (e) {
+    storeSel.innerHTML = '<option value="">Negozi non disponibili</option>';
+    showError(e.message);
+  }
+}
+
+async function loadSlots() {
+  const store = storeSel.value, date = dateInput.value;
+  sel.innerHTML = '<option value="">— scegli —</option>';
+  slotHint.textContent = '';
+  if (!store || !date) return;
+  sel.innerHTML = '<option value="">Caricamento…</option>';
+  try {
+    const res = await fetch(`/api/slots?store=${encodeURIComponent(store)}&date=${encodeURIComponent(date)}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Errore nel caricamento orari');
+    const free = data.slots.filter(s => s.available);
+    if (data.closed) {
+      sel.innerHTML = '<option value="">Negozio chiuso</option>';
+      slotHint.textContent = 'Il negozio è chiuso in questa data: scegli un altro giorno.';
+    } else if (!free.length) {
+      sel.innerHTML = '<option value="">Nessun orario libero</option>';
+      slotHint.textContent = 'Nessun orario disponibile in questa data: prova un altro giorno.';
+    } else {
+      sel.innerHTML = '<option value="">— scegli —</option>' + data.slots.map(s =>
+        `<option value="${s.time}" ${s.available ? '' : 'disabled'}>${s.time}${s.available ? '' : ' (completo)'}</option>`).join('');
+    }
+  } catch (e) {
+    sel.innerHTML = '<option value="">— scegli —</option>';
+    showError(e.message);
+  }
+}
+
+storeSearch.addEventListener('input', () => renderStores(storeSearch.value));
+storeSel.addEventListener('change', loadSlots);
+dateInput.addEventListener('change', loadSlots);
+loadStores();
+
+function showError(msg) {
+  const errEl = document.getElementById('errorMsg');
+  errEl.textContent = msg; errEl.style.display = 'block';
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// "ALCOTT ROMA VIA DEL CORSO" → "Alcott Roma Via Del Corso" (keeps CC / acronyms short words upper)
+function prettyName(n) {
+  return String(n||'').toLowerCase().replace(/\b([a-zà-ÿ])/g, c => c.toUpperCase()).replace(/\bCc\b/g, 'CC');
+}
+
+let _apptId = '';
+
+async function submitForm() {
+  const first_name = document.getElementById('first_name').value.trim();
+  const last_name  = document.getElementById('last_name').value.trim();
+  const email      = document.getElementById('email').value.trim();
+  const errEl = document.getElementById('errorMsg');
+  errEl.style.display = 'none';
+
+  if (!first_name || !last_name || !email) {
+    errEl.textContent = 'Nome, cognome ed email sono obbligatori.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!storeSel.value || !dateInput.value || !sel.value) {
+    errEl.textContent = 'Scegli negozio, data e orario.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true; btn.textContent = 'Invio in corso…';
+
+  try {
+    const res = await fetch('/api/appointment', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        first_name, last_name, email,
+        store:          storeSel.value,
+        phone:          document.getElementById('phone').value.trim(),
+        preferred_date: document.getElementById('preferred_date').value,
+        preferred_time: document.getElementById('preferred_time').value,
+        notes:          document.getElementById('notes').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Errore sconosciuto');
+
+    _apptId = data.id;
+    document.getElementById('apptIdValue').textContent = data.id;
+
+    const det = document.getElementById('apptDetails');
+    det.innerHTML = [
+      ['Nome', data.name],
+      data.store_name ? ['Negozio', prettyName(data.store_name)] : null,
+      data.preferred_date ? ['Data', formatDate(data.preferred_date)] : null,
+      data.preferred_time ? ['Orario', data.preferred_time] : null,
+    ].filter(Boolean).map(([k,v]) =>
+      `<div class="appt-detail-row"><span class="appt-detail-key">${k}</span><span class="appt-detail-val">${v}</span></div>`
+    ).join('');
+
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('confirmView').style.display = 'block';
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Prenota →';
+    if (/orario|esaurito|chiuso/i.test(e.message)) loadSlots();
+  }
+}
+
+function goCheckin() {
+  window.location.href = `/checkin?code=${encodeURIComponent(_apptId)}`;
+}
+
+function copyId() {
+  navigator.clipboard.writeText(_apptId).then(() => {
+    const box = document.getElementById('apptIdBox');
+    const hint = document.getElementById('apptIdHint');
+    box.classList.add('copied');
+    hint.textContent = '✓ Copiato!';
+    setTimeout(() => { box.classList.remove('copied'); hint.textContent = 'Tocca per copiare'; }, 2000);
+  });
+}
+
+function formatDate(d) {
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+</script>
+</body>
+</html>

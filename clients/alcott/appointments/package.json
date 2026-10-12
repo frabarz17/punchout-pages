@@ -1,0 +1,8 @@
+{
+  "name": "alcott-store-appointments",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Alcott in-store appointment booking connected to Salesforce (ServiceAppointment)",
+  "engines": { "node": ">=18" }
+}

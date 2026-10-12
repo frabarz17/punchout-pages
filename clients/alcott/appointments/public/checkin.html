@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Check-in Appuntamento</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --pink:    #e91e8c;
+    --pink-d:  #c4167a;
+    --dark:    #1a1a1a;
+    --mid:     #2e2e2e;
+    --surface: #242424;
+    --border:  #383838;
+    --text:    #f0f0f0;
+    --weak:    #888;
+    --radius:  14px;
+  }
+  html, body { height: 100%; background: var(--dark); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  .page { min-height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 40px 28px; text-align: center; }
+
+  .eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--pink); margin-bottom: 10px; }
+  h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 8px; }
+  h1 span { color: var(--pink); }
+  .subtitle { font-size: .88rem; color: var(--weak); line-height: 1.6; margin-bottom: 32px; max-width: 280px; }
+
+  .code-input-wrap { width: 100%; max-width: 320px; margin-bottom: 16px; }
+  .code-input {
+    width: 100%; padding: 18px; border-radius: var(--radius);
+    background: var(--surface); border: 2px solid var(--border); color: var(--text);
+    font-size: 2rem; font-weight: 800; letter-spacing: .25em; text-align: center;
+    font-family: 'SF Mono', 'Fira Code', monospace; text-transform: uppercase;
+    outline: none; transition: border-color .2s; -webkit-appearance: none;
+  }
+  .code-input:focus { border-color: var(--pink); }
+  .code-input::placeholder { font-size: 1rem; letter-spacing: .05em; font-weight: 400;
+    color: var(--weak); font-family: -apple-system, sans-serif; }
+
+  .btn-submit { width: 100%; max-width: 320px; padding: 16px; border-radius: var(--radius);
+    border: none; cursor: pointer; background: var(--pink); color: #fff;
+    font-size: 1rem; font-weight: 700; transition: background .15s; }
+  .btn-submit:hover { background: var(--pink-d); }
+  .btn-submit:disabled { background: var(--border); color: var(--weak); cursor: default; }
+
+  .error-msg { width: 100%; max-width: 320px; background: rgba(255,80,80,.1);
+    border: 1px solid rgba(255,80,80,.3); border-radius: 8px; padding: 10px 14px;
+    font-size: .82rem; color: #ff5555; margin-bottom: 14px; display: none; text-align: center; }
+
+  /* Success */
+  .success { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 360px; }
+  .success-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(233,30,140,.15);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+  .success-icon svg { width: 32px; height: 32px; fill: none; stroke: var(--pink); stroke-width: 2; }
+  .success h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+  .success-name { font-size: 1.1rem; color: var(--pink); font-weight: 700; margin-bottom: 20px; }
+
+  .success-card { background: var(--surface); border-radius: var(--radius); padding: 16px 20px;
+    width: 100%; margin-bottom: 20px; text-align: left; }
+  .success-row { display: flex; justify-content: space-between; font-size: .85rem; padding: 4px 0; }
+  .success-row:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px; }
+  .success-key { color: var(--weak); }
+  .success-val { font-weight: 600; }
+
+  .waiting-msg { background: var(--surface); border-radius: var(--radius); padding: 14px 18px;
+    font-size: .82rem; color: var(--weak); line-height: 1.6; text-align: center; width: 100%; }
+  .waiting-msg strong { color: var(--text); display: block; margin-bottom: 4px; font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div id="formView" style="display:flex;flex-direction:column;align-items:center;width:100%">
+    <div class="eyebrow">In-Store Experience</div>
+    <h1>Sei <span>Arrivato!</span></h1>
+    <p class="subtitle">Inserisci il codice del tuo appuntamento per confermare la tua presenza.</p>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="code-input-wrap">
+      <input class="code-input" id="codeInput" type="text" maxlength="6"
+        placeholder="es. A3F7K2" autocomplete="off" autocorrect="off" spellcheck="false"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+        onkeydown="if(event.key==='Enter')submitCheckin()"/>
+    </div>
+    <button class="btn-submit" id="btnSubmit" onclick="submitCheckin()">Conferma arrivo →</button>
+  </div>
+
+  <div class="success" id="successView">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>Benvenuto!</h2>
+    <div class="success-name" id="successName"></div>
+
+    <div class="success-card" id="successCard"></div>
+
+    <div class="waiting-msg">
+      <strong>Il tuo assistente sta arrivando</strong>
+      Siediti pure, qualcuno del nostro team verrà a prendersi cura di te a breve.
+    </div>
+  </div>
+</div>
+
+<script>
+// Pre-fill code from query string if present
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (code) {
+    const input = document.getElementById('codeInput');
+    input.value = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  }
+})();
+
+async function submitCheckin() {
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  const errEl = document.getElementById('errorMsg');
+  errEl.style.display = 'none';
+
+  if (code.length < 6) {
+    errEl.textContent = 'Inserisci il codice completo di 6 caratteri.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true; btn.textContent = 'Verifica in corso…';
+
+  try {
+    const res = await fetch(`/api/appointment/${code}/checkin`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Errore');
+
+    document.getElementById('successName').textContent = data.name;
+    const rows = [];
+    if (data.store_name) rows.push(['Negozio', String(data.store_name).toLowerCase().replace(/\b([a-zà-ÿ])/g, c => c.toUpperCase()).replace(/\bCc\b/g, 'CC')]);
+    if (data.preferred_date) rows.push(['Data appuntamento', formatDate(data.preferred_date)]);
+    if (data.preferred_time) rows.push(['Orario', data.preferred_time]);
+    document.getElementById('successCard').innerHTML = rows.map(([k,v]) =>
+      `<div class="success-row"><span class="success-key">${k}</span><span class="success-val">${v}</span></div>`
+    ).join('');
+
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('successView').style.display = 'flex';
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Conferma arrivo →';
+  }
+}
+
+function formatDate(d) {
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+</script>
+</body>
+</html>

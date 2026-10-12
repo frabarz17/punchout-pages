@@ -1,0 +1,11 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/appointment",  "destination": "/public/appointment.html" },
+    { "source": "/checkin",      "destination": "/public/checkin.html" },
+    { "source": "/appointments", "destination": "/public/appointments.html" }
+  ],
+  "headers": [
+    { "source": "/api/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}
