@@ -574,9 +574,13 @@ function _doSend(payload) {
     updateFab();
     document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
   } else {
-    // Outside WKWebView: demo mode
-    showToast(`[Demo] ${payload.products.length} prodott${payload.products.length > 1 ? 'i selezionati' : 'o selezionato'}`);
-    console.log('Payload pronto — webkit non disponibile (normale fuori dal POS)');
+    // Outside WKWebView: simulate success (demo / browser preview)
+    const n = payload.products.length;
+    showToast(`${n} prodott${n > 1 ? 'i aggiunti' : 'o aggiunto'} al carrello`);
+    closeCart();
+    _cart = [];
+    updateFab();
+    document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
   }
 }
 
