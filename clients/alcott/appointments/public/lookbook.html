@@ -29,14 +29,14 @@
   .search-input {
     padding: 7px 32px 7px 12px; border-radius: 20px; border: 1.5px solid var(--border);
     background: var(--surface); font-size: .82rem; font-family: inherit;
-    color: var(--text); outline: none; width: 170px; transition: border-color .2s, width .3s;
+    color: var(--text); outline: none; width: 160px; transition: border-color .2s, width .3s;
     -webkit-appearance: none;
   }
-  .search-input:focus { border-color: var(--accent); width: 210px; }
+  .search-input:focus { border-color: var(--accent); width: 200px; }
   .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
     width: 14px; height: 14px; pointer-events: none; }
   .btn-debug {
-    padding: 6px 12px; border-radius: 6px; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    padding: 6px 10px; border-radius: 6px; font-size: .68rem; font-weight: 700; text-transform: uppercase;
     border: 1.5px solid var(--border); background: none; color: var(--weak);
     cursor: pointer; letter-spacing: .04em; transition: all .15s; white-space: nowrap; font-family: inherit;
   }
@@ -47,17 +47,17 @@
     border-bottom: 1px solid var(--border); padding: 0 16px; }
   .filter-bar::-webkit-scrollbar { display: none; }
   .filter-chip {
-    padding: 12px 14px; font-size: .75rem; font-weight: 700; white-space: nowrap;
+    padding: 12px 13px; font-size: .73rem; font-weight: 700; white-space: nowrap;
     border: none; background: none; color: var(--weak); cursor: pointer;
-    letter-spacing: .07em; text-transform: uppercase; position: relative;
-    transition: color .15s; font-family: inherit; display: flex; align-items: center; gap: 5px;
+    letter-spacing: .06em; text-transform: uppercase; position: relative;
+    transition: color .15s; font-family: inherit; display: flex; align-items: center; gap: 4px;
   }
   .filter-chip::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0;
     height: 2px; background: var(--accent); transform: scaleX(0); transition: transform .2s; }
   .filter-chip:hover { color: var(--accent); }
   .filter-chip.active { color: var(--accent); }
   .filter-chip.active::after { transform: scaleX(1); }
-  .chip-count { font-size: .65rem; color: var(--weak); font-weight: 400; opacity: .7; }
+  .chip-count { font-size: .64rem; opacity: .6; font-weight: 400; }
 
   /* ── GRID ── */
   .content { flex: 1; overflow-y: auto; min-height: 0; }
@@ -65,18 +65,41 @@
   @media (min-width: 540px) { .grid { grid-template-columns: repeat(4, 1fr); } }
   @media (min-width: 800px) { .grid { grid-template-columns: repeat(5, 1fr); } }
 
-  .product-tile { background: var(--bg); cursor: pointer; position: relative; overflow: hidden; aspect-ratio: 3/4; }
+  .product-tile {
+    background: var(--bg); cursor: pointer; position: relative; overflow: hidden;
+    aspect-ratio: 3/4; transition: opacity .15s;
+  }
+  .product-tile:active { opacity: .8; }
   .product-tile:hover .tile-back { opacity: 1; }
-  .product-tile:active { opacity: .85; }
   .tile-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .tile-back { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-    opacity: 0; transition: opacity .3s; }
+  .tile-back { position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 0; transition: opacity .3s; }
   .tile-overlay { position: absolute; bottom: 0; left: 0; right: 0;
     background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);
     padding: 24px 10px 10px; pointer-events: none; }
-  .tile-name { font-size: .7rem; font-weight: 700; color: #fff; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; }
+  .tile-name { font-size: .7rem; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile-price { font-size: .68rem; color: rgba(255,255,255,.75); margin-top: 1px; }
+
+  /* Selected tick */
+  .tile-check {
+    position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); display: none; align-items: center; justify-content: center;
+    z-index: 5; pointer-events: none;
+  }
+  .tile-check svg { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.5; }
+  .product-tile.selected .tile-check { display: flex; }
+  .product-tile.selected { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+  /* Load more */
+  .load-more-wrap { padding: 20px; text-align: center; }
+  .btn-load-more {
+    padding: 12px 32px; border-radius: 6px; border: 1.5px solid var(--border);
+    background: none; color: var(--text); font-size: .85rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; cursor: pointer;
+    transition: all .15s; font-family: inherit;
+  }
+  .btn-load-more:hover { border-color: var(--accent); }
 
   /* ── MODAL ── */
   .modal-overlay { display: none; position: fixed; inset: 0; z-index: 500;
@@ -109,26 +132,82 @@
 
   .modal-actions { display: flex; gap: 10px; padding: 16px 20px 28px; flex-shrink: 0;
     border-top: 1px solid var(--border); margin-top: 16px; }
-  .btn-pos { flex: 1; padding: 14px; border-radius: 6px; border: none; cursor: pointer;
-    background: var(--accent); color: #fff; font-size: .88rem; font-weight: 700;
-    letter-spacing: .06em; text-transform: uppercase; transition: background .15s; font-family: inherit; }
-  .btn-pos:hover { background: var(--accent-d); }
-  .btn-pos.debug-mode { background: #92400e; }
+  .btn-add {
+    flex: 1; padding: 14px; border-radius: 6px; border: 2px solid var(--accent);
+    background: none; color: var(--accent); font-size: .88rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+    transition: all .15s; font-family: inherit;
+  }
+  .btn-add:hover, .btn-add.added { background: var(--accent); color: #fff; }
   .btn-site { padding: 14px 18px; border-radius: 6px; border: 1.5px solid var(--border);
     background: none; color: var(--text); font-size: .88rem; font-weight: 600;
     cursor: pointer; transition: all .15s; white-space: nowrap; text-decoration: none;
     display: flex; align-items: center; gap: 5px; font-family: inherit; }
   .btn-site:hover { border-color: var(--accent); }
 
+  /* ── FAB ── */
+  .fab {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: #fff; border: none; border-radius: 50px;
+    padding: 14px 28px; font-size: .95rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .15s;
+    z-index: 400; white-space: nowrap;
+  }
+  .fab.visible { transform: translateX(-50%) translateY(0); }
+  .fab:hover { background: var(--accent-d, #333); }
+  .fab:active { transform: translateX(-50%) scale(.97); }
+  .fab-badge {
+    background: #fff; color: var(--accent); border-radius: 50%; width: 24px; height: 24px;
+    font-size: .8rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── CART OVERLAY ── */
+  .cart-overlay { display: none; position: fixed; inset: 0; z-index: 600;
+    background: rgba(0,0,0,.5); align-items: flex-end; justify-content: center; }
+  .cart-overlay.show { display: flex; }
+  .cart-panel { background: var(--bg); width: 100%; max-width: 560px; max-height: 80vh;
+    border-radius: 16px 16px 0 0; display: flex; flex-direction: column;
+    animation: slideup .25s ease; overflow: hidden; }
+  .cart-header { display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .cart-title { font-size: 1rem; font-weight: 800; }
+  .cart-close { background: none; border: none; cursor: pointer; font-size: 1.2rem;
+    color: var(--weak); padding: 4px; }
+  .cart-list { flex: 1; overflow-y: auto; padding: 12px 20px; }
+  .cart-item { display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--border); }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item-img { width: 56px; height: 56px; object-fit: cover; border-radius: 4px;
+    flex-shrink: 0; background: var(--surface); }
+  .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item-name { font-size: .85rem; font-weight: 700; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .cart-item-price { font-size: .78rem; color: var(--weak); margin-top: 2px; }
+  .cart-item-remove { background: none; border: none; cursor: pointer; padding: 6px;
+    color: var(--weak); font-size: 1rem; flex-shrink: 0; transition: color .15s; }
+  .cart-item-remove:hover { color: #c0392b; }
+  .cart-footer { padding: 16px 20px 28px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .btn-send-cart {
+    width: 100%; padding: 15px; border-radius: 6px; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font-size: .95rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-send-cart:hover { background: #333; }
+  .btn-send-cart.debug-mode { background: #92400e; }
+
   /* ── MISC ── */
   .empty { text-align: center; padding: 60px 20px; color: var(--weak); font-size: .9rem; }
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
     background: var(--accent); color: #fff; padding: 10px 22px; border-radius: 50px;
     font-size: .82rem; font-weight: 600; opacity: 0; transition: opacity .22s, transform .22s;
-    pointer-events: none; white-space: nowrap; z-index: 600; }
+    pointer-events: none; white-space: nowrap; z-index: 700; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  .debug-overlay { display: none; position: fixed; inset: 0; z-index: 700;
+  .debug-overlay { display: none; position: fixed; inset: 0; z-index: 800;
     background: rgba(0,0,0,.6); align-items: flex-end; justify-content: center; }
   .debug-overlay.show { display: flex; }
   .debug-panel { background: var(--bg); border: 1px solid #f59e0b; border-radius: 16px 16px 0 0;
@@ -136,8 +215,8 @@
   .debug-panel-title { font-size: .65rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: .1em; color: #92400e; margin-bottom: 12px; }
   .debug-payload { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 14px; font-family: 'SF Mono', monospace; font-size: .78rem; color: #333;
-    white-space: pre; overflow-x: auto; margin-bottom: 16px; line-height: 1.6; }
+    padding: 14px; font-family: 'SF Mono', monospace; font-size: .76rem; color: #333;
+    white-space: pre; overflow-x: auto; max-height: 280px; margin-bottom: 16px; line-height: 1.6; }
   .debug-actions { display: flex; gap: 10px; }
   .btn-dbg-send { flex: 1; padding: 14px; border-radius: 8px; border: none; cursor: pointer;
     background: var(--accent); color: #fff; font-size: .9rem; font-weight: 700; font-family: inherit; }
@@ -164,11 +243,20 @@
     <div class="filter-bar" id="filterBar"></div>
   </div>
 
-  <div class="content">
+  <div class="content" id="contentEl">
     <div class="grid" id="grid"></div>
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
+      <button class="btn-load-more" onclick="loadMore()">Carica altri <span id="loadMoreCount"></span></button>
+    </div>
     <div class="empty" id="emptyMsg" style="display:none">Nessun prodotto trovato.</div>
   </div>
 </div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="openCart()">
+  <span>Selezione</span>
+  <span class="fab-badge" id="fabBadge">0</span>
+</button>
 
 <!-- Product modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="overlayClick(event)">
@@ -185,14 +273,28 @@
       <div class="modal-desc" id="modalDesc"></div>
     </div>
     <div class="modal-actions">
-      <button class="btn-pos" id="btnPos" onclick="sendToPos()">Usa per il cliente</button>
+      <button class="btn-add" id="btnAdd" onclick="toggleSelect()">+ Aggiungi alla selezione</button>
       <a class="btn-site" id="btnSite" href="#" target="_blank">
-        <span>Sito</span>
+        Sito
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
           <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
         </svg>
       </a>
+    </div>
+  </div>
+</div>
+
+<!-- Cart panel -->
+<div class="cart-overlay" id="cartOverlay" onclick="cartOverlayClick(event)">
+  <div class="cart-panel">
+    <div class="cart-header">
+      <div class="cart-title">Selezione (<span id="cartCount">0</span>)</div>
+      <button class="cart-close" onclick="closeCart()">&#x2715;</button>
+    </div>
+    <div class="cart-list" id="cartList"></div>
+    <div class="cart-footer">
+      <button class="btn-send-cart" id="btnSendCart" onclick="sendCart()">Invia al POS</button>
     </div>
   </div>
 </div>
@@ -219,11 +321,15 @@ const CAT_LABELS = {
   'T-Shirt':'T-Shirt & Top','Camicie':'Camicie','Pantaloni':'Pantaloni',
   'Jeans':'Jeans','Scarpe':'Scarpe','Felpe':'Felpe','Special':'Collab & Special'
 };
+const PAGE_SIZE = 24;
 
 let _filter = 'All';
 let _debugMode = false;
-let _selected = null;
-let _pending = null;
+let _selected = null;   // product open in modal
+let _cart = [];         // { id, name, img, price }
+let _filtered = [];     // current filtered list
+let _page = 1;
+let _pendingPayload = null;
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 (function init() {
@@ -245,35 +351,91 @@ function buildFilterBar() {
 function setFilter(cat) {
   _filter = cat;
   document.querySelectorAll('.filter-chip').forEach(el => {
-    const label = el.firstChild.textContent.trim();
+    const label = el.childNodes[0].textContent.trim();
     const expected = cat === 'All' ? 'Tutti' : (CAT_LABELS[cat] || cat);
     el.classList.toggle('active', label === expected);
   });
+  _page = 1;
+  document.getElementById('contentEl').scrollTop = 0;
   applyFilters();
 }
 
 function applyFilters() {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const products = CATALOG.filter(p => {
+  _filtered = CATALOG.filter(p => {
     const catOk = _filter === 'All' || p.c === _filter;
     const searchOk = !q || p.n.toLowerCase().includes(q) || (CAT_LABELS[p.c]||p.c).toLowerCase().includes(q);
     return catOk && searchOk;
   });
+  _page = 1;
+  renderGrid();
+}
+
+// ── GRID ─────────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const visible = _filtered.slice(0, _page * PAGE_SIZE);
+  const remaining = _filtered.length - visible.length;
+  const selectedIds = new Set(_cart.map(x => x.id));
   const grid = document.getElementById('grid');
   const empty = document.getElementById('emptyMsg');
-  if (!products.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
+  const lmWrap = document.getElementById('loadMoreWrap');
+
+  if (!_filtered.length) {
+    grid.innerHTML = '';
+    empty.style.display = '';
+    lmWrap.style.display = 'none';
+    return;
+  }
   empty.style.display = 'none';
-  grid.innerHTML = products.map((p, idx) => {
+  grid.innerHTML = visible.map((p, idx) => {
     const back = p.a && p.a.length ? p.a[0] : p.m;
-    return `<div class="product-tile" onclick="openModal('${p.i}')">
+    const sel = selectedIds.has(p.i) ? ' selected' : '';
+    return `<div class="product-tile${sel}" id="tile-${p.i}" onclick="openModal('${p.i}')">
       <img class="tile-img" src="${esc(p.m)}" alt="${esc(p.n)}" loading="${idx < 9 ? 'eager' : 'lazy'}"/>
       <img class="tile-back" src="${esc(back)}" alt="" loading="lazy"/>
       <div class="tile-overlay">
         <div class="tile-name">${esc(p.n)}</div>
         <div class="tile-price">€${p.p || '—'}</div>
       </div>
+      <div class="tile-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
     </div>`;
   }).join('');
+
+  if (remaining > 0) {
+    lmWrap.style.display = '';
+    document.getElementById('loadMoreCount').textContent = `(${remaining} rimasti)`;
+  } else {
+    lmWrap.style.display = 'none';
+  }
+}
+
+function loadMore() {
+  _page++;
+  const selectedIds = new Set(_cart.map(x => x.id));
+  const visible = _filtered.slice(0, _page * PAGE_SIZE);
+  const remaining = _filtered.length - visible.length;
+  const grid = document.getElementById('grid');
+  // append only new tiles
+  const start = (_page - 1) * PAGE_SIZE;
+  const newItems = _filtered.slice(start, _page * PAGE_SIZE);
+  newItems.forEach((p, i) => {
+    const back = p.a && p.a.length ? p.a[0] : p.m;
+    const sel = selectedIds.has(p.i) ? ' selected' : '';
+    const div = document.createElement('div');
+    div.className = `product-tile${sel}`;
+    div.id = `tile-${p.i}`;
+    div.setAttribute('onclick', `openModal('${p.i}')`);
+    div.innerHTML = `<img class="tile-img" src="${esc(p.m)}" alt="${esc(p.n)}" loading="lazy"/>
+      <img class="tile-back" src="${esc(back)}" alt="" loading="lazy"/>
+      <div class="tile-overlay">
+        <div class="tile-name">${esc(p.n)}</div>
+        <div class="tile-price">€${p.p || '—'}</div>
+      </div>
+      <div class="tile-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>`;
+    grid.appendChild(div);
+  });
+  document.getElementById('loadMoreCount').textContent = remaining > 0 ? `(${remaining} rimasti)` : '';
+  if (remaining <= 0) document.getElementById('loadMoreWrap').style.display = 'none';
 }
 
 // ── MODAL ────────────────────────────────────────────────────────────────────
@@ -288,19 +450,25 @@ function openModal(id) {
   document.getElementById('modalPrice').textContent = p.p ? `€${p.p}` : '';
   document.getElementById('modalDesc').textContent = p.d || '';
   document.getElementById('btnSite').href = p.l;
-  const btn = document.getElementById('btnPos');
-  btn.textContent = _debugMode ? '🔍 Mostra Payload' : 'Usa per il cliente';
-  btn.classList.toggle('debug-mode', _debugMode);
+  syncAddBtn();
   const thumbsEl = document.getElementById('modalThumbs');
   if (imgs.length > 1) {
     thumbsEl.innerHTML = imgs.map((img, i) =>
-      `<img class="modal-thumb${i === 0 ? ' active' : ''}" src="${esc(img)}" onclick="switchImg('${esc(img)}', this)" alt=""/>`
+      `<img class="modal-thumb${i === 0 ? ' active' : ''}" src="${esc(img)}" onclick="switchImg('${esc(img)}',this)" alt=""/>`
     ).join('');
     thumbsEl.style.display = '';
   } else {
     thumbsEl.innerHTML = ''; thumbsEl.style.display = 'none';
   }
   document.getElementById('modalOverlay').classList.add('show');
+}
+
+function syncAddBtn() {
+  if (!_selected) return;
+  const inCart = _cart.some(x => x.id === _selected.i);
+  const btn = document.getElementById('btnAdd');
+  btn.textContent = inCart ? '✓ Nella selezione' : '+ Aggiungi alla selezione';
+  btn.classList.toggle('added', inCart);
 }
 
 function switchImg(src, el) {
@@ -317,14 +485,78 @@ function closeModal() {
   _selected = null;
 }
 
-// ── PUNCHOUT ─────────────────────────────────────────────────────────────────
-function sendToPos() {
+// ── SELECTION ────────────────────────────────────────────────────────────────
+function toggleSelect() {
   if (!_selected) return;
   const p = _selected;
-  const payload = { command: 'ProductSelected', debugMode: 0,
-    productId: p.i, productName: p.n, imageUrl: p.m, price: p.p, productUrl: p.l };
+  const idx = _cart.findIndex(x => x.id === p.i);
+  if (idx >= 0) {
+    _cart.splice(idx, 1);
+  } else {
+    _cart.push({ id: p.i, name: p.n, img: p.m, price: p.p, link: p.l });
+  }
+  syncAddBtn();
+  updateFab();
+  const tile = document.getElementById(`tile-${p.i}`);
+  if (tile) tile.classList.toggle('selected', _cart.some(x => x.id === p.i));
+}
+
+function updateFab() {
+  const fab = document.getElementById('fab');
+  document.getElementById('fabBadge').textContent = _cart.length;
+  fab.classList.toggle('visible', _cart.length > 0);
+}
+
+// ── CART ─────────────────────────────────────────────────────────────────────
+function openCart() {
+  renderCart();
+  document.getElementById('cartOverlay').classList.add('show');
+}
+
+function renderCart() {
+  document.getElementById('cartCount').textContent = _cart.length;
+  const btn = document.getElementById('btnSendCart');
+  btn.textContent = _debugMode ? '🔍 Mostra Payload' : 'Invia al POS';
+  btn.classList.toggle('debug-mode', _debugMode);
+  document.getElementById('cartList').innerHTML = _cart.map(item =>
+    `<div class="cart-item">
+      <img class="cart-item-img" src="${esc(item.img)}" alt="${esc(item.name)}"/>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${esc(item.name)}</div>
+        <div class="cart-item-price">${item.price ? '€'+item.price : ''}</div>
+      </div>
+      <button class="cart-item-remove" onclick="removeFromCart('${item.id}')">&#x2715;</button>
+    </div>`
+  ).join('');
+}
+
+function removeFromCart(id) {
+  _cart = _cart.filter(x => x.id !== id);
+  updateFab();
+  renderCart();
+  const tile = document.getElementById(`tile-${id}`);
+  if (tile) tile.classList.remove('selected');
+  if (_selected && _selected.i === id) syncAddBtn();
+  if (!_cart.length) closeCart();
+}
+
+function cartOverlayClick(e) {
+  if (e.target === document.getElementById('cartOverlay')) closeCart();
+}
+function closeCart() {
+  document.getElementById('cartOverlay').classList.remove('show');
+}
+
+// ── SEND ──────────────────────────────────────────────────────────────────────
+function sendCart() {
+  if (!_cart.length) return;
+  const payload = {
+    command: 'ProductsSelected',
+    debugMode: 0,
+    products: _cart.map(x => ({ productId: x.id, productName: x.name, imageUrl: x.img, price: x.price, productUrl: x.link })),
+  };
   if (_debugMode) {
-    _pending = p;
+    _pendingPayload = payload;
     document.getElementById('debugPayload').textContent = JSON.stringify(payload, null, 2);
     document.getElementById('debugOverlay').classList.add('show');
     return;
@@ -333,25 +565,28 @@ function sendToPos() {
 }
 
 function _doSend(payload) {
-  console.log('[PunchOut ProductSelected]', JSON.stringify(payload, null, 2));
-  if (window.webkit?.messageHandlers?.ProductSelected) {
-    window.webkit.messageHandlers.ProductSelected.postMessage(JSON.stringify(payload));
-    showToast('Prodotto inviato al POS');
+  console.log('[PunchOut ProductsSelected]', JSON.stringify(payload, null, 2));
+  if (window.webkit?.messageHandlers?.ProductsSelected) {
+    window.webkit.messageHandlers.ProductsSelected.postMessage(JSON.stringify(payload));
+    showToast(`${payload.products.length} prodott${payload.products.length > 1 ? 'i inviati' : 'o inviato'} al POS`);
+    closeCart();
+    _cart = [];
+    updateFab();
+    document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
   } else {
-    showToast('webkit non disponibile — vedi console');
+    // Outside WKWebView: demo mode
+    showToast(`[Demo] ${payload.products.length} prodott${payload.products.length > 1 ? 'i selezionati' : 'o selezionato'}`);
+    console.log('Payload pronto — webkit non disponibile (normale fuori dal POS)');
   }
 }
 
 function debugSend() {
   document.getElementById('debugOverlay').classList.remove('show');
-  if (_pending) {
-    const p = _pending; _pending = null;
-    _doSend({ command: 'ProductSelected', debugMode: 0, productId: p.i, productName: p.n, imageUrl: p.m, price: p.p, productUrl: p.l });
-  }
+  if (_pendingPayload) { const p = _pendingPayload; _pendingPayload = null; _doSend(p); }
 }
 function debugCancel() {
   document.getElementById('debugOverlay').classList.remove('show');
-  _pending = null;
+  _pendingPayload = null;
 }
 
 // ── DEBUG ─────────────────────────────────────────────────────────────────────
@@ -371,7 +606,7 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add('show');
   clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 2500);
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCart(); } });
 </script>
 </body>
 </html>
