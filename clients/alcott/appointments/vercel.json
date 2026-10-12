@@ -4,7 +4,8 @@
     { "source": "/appointment",  "destination": "/public/appointment.html" },
     { "source": "/checkin",      "destination": "/public/checkin.html" },
     { "source": "/appointments", "destination": "/public/appointments.html" },
-    { "source": "/lookbook",     "destination": "/public/lookbook.html" }
+    { "source": "/lookbook",          "destination": "/public/lookbook.html" },
+    { "source": "/personal-shopper", "destination": "/public/personal-shopper.html" }
   ],
   "headers": [
     { "source": "/api/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
