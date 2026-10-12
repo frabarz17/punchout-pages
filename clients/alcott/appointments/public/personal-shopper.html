@@ -145,7 +145,7 @@ async function init() {
     await sendToAgent('ciao');
   } catch(e) {
     setStatus(false, 'Non disponibile');
-    showError('Impossibile connettersi all\'agente. Controlla la configurazione.');
+    showError('Connessione fallita: ' + e.message);
     console.error('[PersonalShopper init]', e);
   }
 }
@@ -179,7 +179,7 @@ async function sendToAgent(text) {
     }
   } catch(e) {
     removeTyping(typingId);
-    showError('Qualcosa è andato storto. Riprova.');
+    showError('Errore: ' + e.message);
     console.error('[PersonalShopper message]', e);
   } finally {
     _waiting = false; enableInput();
