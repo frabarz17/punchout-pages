@@ -1,6 +1,6 @@
 const AGENT_API_BASE = 'https://api.salesforce.com/einstein/ai-agent/v1';
 
-let _tokenCache = null;
+let _tokenCache = null; // v2 — JWT tokens enabled
 
 async function ensureToken() {
   if (_tokenCache && _tokenCache.expiresAt > Date.now() + 120_000) {
