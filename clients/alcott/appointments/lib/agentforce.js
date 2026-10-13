@@ -4,7 +4,7 @@ let _tokenCache = null;
 
 async function ensureToken() {
   if (_tokenCache && _tokenCache.expiresAt > Date.now() + 120_000) {
-    return _tokenCache.accessToken;
+    return _tokenCache;
   }
   const loginUrl = (process.env.AGENTFORCE_LOGIN_URL || '').replace(/\/$/, '');
   const params = new URLSearchParams({
@@ -19,39 +19,34 @@ async function ensureToken() {
   const tokenBody = await r.text();
   if (!r.ok) throw new Error(`Agentforce token error: ${r.status} ${tokenBody}`);
   const d = JSON.parse(tokenBody);
-  const oauthToken  = d.access_token;
   const instanceUrl = (d.instance_url || loginUrl).replace(/\/$/, '');
-  console.log('[agentforce] oauth token ok, instance_url:', instanceUrl);
+  console.log('[agentforce] token ok, instance_url:', instanceUrl);
+  _tokenCache = { accessToken: d.access_token, instanceUrl, expiresAt: Date.now() + 25 * 60 * 1000 };
+  return _tokenCache;
+}
 
-  // Exchange OAuth token for an Agentforce JWT via bootstrap
-  const r2 = await fetch(`${instanceUrl}/agentforce/bootstrap/service`, {
-    headers: { Authorization: `Bearer ${oauthToken}` },
-  });
-  const b2 = await r2.text();
-  console.log('[agentforce] bootstrap response:', r2.status, b2.slice(0, 200));
-  if (!r2.ok) throw new Error(`Agentforce bootstrap error: ${r2.status} ${b2}`);
-  const jwt = JSON.parse(b2).access_token;
-
-  _tokenCache = { accessToken: jwt, expiresAt: Date.now() + 25 * 60 * 1000 };
-  return _tokenCache.accessToken;
+function authHeaders(token, instanceUrl) {
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'x-sfdc-instance-url': instanceUrl,
+  };
 }
 
 export async function startSession(externalKey) {
-  const token    = await ensureToken();
-  const agentId  = process.env.AGENTFORCE_AGENT_ID || '';
-  const loginUrl = (process.env.AGENTFORCE_LOGIN_URL || '').replace(/\/$/, '');
-  const url = `${AGENT_API_BASE}/agents/${agentId}/sessions`;
+  const { accessToken, instanceUrl } = await ensureToken();
+  const agentId = process.env.AGENTFORCE_AGENT_ID || '';
+  const url     = `${AGENT_API_BASE}/agents/${agentId}/sessions`;
   const payload = {
     externalSessionKey: externalKey,
-    instanceConfig: { endpoint: loginUrl },
+    instanceConfig: { endpoint: instanceUrl },
     streamingCapabilities: { chunkTypes: ['Text'] },
     bypassUser: true,
   };
   console.log('[agentforce] startSession url:', url);
-  console.log('[agentforce] startSession payload:', JSON.stringify(payload));
   const r = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: authHeaders(accessToken, instanceUrl),
     body: JSON.stringify(payload),
   });
   const body = await r.text();
@@ -61,10 +56,10 @@ export async function startSession(externalKey) {
 }
 
 export async function sendMessage(sfSessionId, sequenceId, text) {
-  const token = await ensureToken();
+  const { accessToken, instanceUrl } = await ensureToken();
   const r = await fetch(`${AGENT_API_BASE}/sessions/${sfSessionId}/messages`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: authHeaders(accessToken, instanceUrl),
     body: JSON.stringify({
       message: { sequenceId, type: 'Text', text },
       variables: [],
@@ -78,9 +73,9 @@ export async function sendMessage(sfSessionId, sequenceId, text) {
 }
 
 export async function endSession(sfSessionId) {
-  const token = await ensureToken();
+  const { accessToken, instanceUrl } = await ensureToken();
   await fetch(`${AGENT_API_BASE}/sessions/${sfSessionId}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}`, 'x-session-end-reason': 'UserRequest' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'x-sfdc-instance-url': instanceUrl, 'x-session-end-reason': 'UserRequest' },
   });
 }
