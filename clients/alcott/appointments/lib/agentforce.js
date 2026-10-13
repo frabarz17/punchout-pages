@@ -20,7 +20,7 @@ async function ensureToken() {
   if (!r.ok) throw new Error(`Agentforce token error: ${r.status} ${tokenBody}`);
   const d = JSON.parse(tokenBody);
   const instanceUrl = (d.instance_url || loginUrl).replace(/\/$/, '');
-  console.log('[agentforce] token ok, instance_url:', instanceUrl);
+  console.log('[agentforce] token ok, instance_url:', instanceUrl, '— token prefix:', d.access_token.slice(0, 3));
   _tokenCache = { accessToken: d.access_token, instanceUrl, expiresAt: Date.now() + 25 * 60 * 1000 };
   return _tokenCache;
 }
