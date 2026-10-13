@@ -24,5 +24,17 @@ export function handler(methods, fn) {
 
 export function body(req) {
   if (req.body && typeof req.body === 'object') return req.body;
-  try { return JSON.parse(req.body || '{}'); } catch { return {}; }
+  if (typeof req.body === 'string') { try { return JSON.parse(req.body); } catch { return {}; } }
+  return {};
+}
+
+export async function readBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  if (typeof req.body === 'string') { try { return JSON.parse(req.body); } catch { return {}; } }
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+    req.on('error', () => resolve({}));
+  });
 }
