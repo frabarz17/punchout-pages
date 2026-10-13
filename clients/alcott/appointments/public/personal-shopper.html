@@ -254,7 +254,10 @@ function appendProducts(items) {
   const carousel = document.createElement('div');
   carousel.className = 'products-carousel';
 
-  items.forEach(p => {
+  const startIdx = _psProducts.length;
+  _psProducts.push(...items);
+
+  items.forEach((p, i) => {
     const card = document.createElement('div');
     card.className = 'product-card';
     const currency = p.currency === 'EUR' ? '€' : (p.currency || '€');
@@ -272,7 +275,7 @@ function appendProducts(items) {
         ${colorClean ? `<div class="product-card-meta">${esc(colorClean)}</div>` : ''}
         <div class="product-card-price">${currency}${esc(String(p.price || ''))}</div>
         ${sizesHtml}
-        <button class="product-card-btn" onclick="openProduct('${esc(p.url || '')}')">Vedi →</button>
+        <button class="product-card-btn product-card-add" data-idx="${startIdx + i}">+ Carrello</button>
       </div>`;
     carousel.appendChild(card);
   });
@@ -284,6 +287,45 @@ function appendProducts(items) {
 
 function openProduct(url) { if (url) window.open(url, '_blank'); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Registry of all products shown in cards — indexed by data-idx
+const _psProducts = [];
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.product-card-add');
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx);
+  const p = _psProducts[idx];
+  if (!p) return;
+  const sku = p.sku || `${p.article || ''}_${p.size || p.sizes?.[0] || ''}`;
+  const payload = {
+    command: 'AddToCart', debugMode: 0, count: 1,
+    products: [{ sku, quantity: 1, price: parseFloat(p.price) || 0, currency: p.currency || 'EUR', image: p.img || '' }],
+  };
+  console.log('[PersonalShopper AddToCart]', JSON.stringify(payload, null, 2));
+  const n = `${p.name}${p.size || (p.sizes?.[0] ? ' (' + p.sizes[0] + ')' : '')}`;
+  try {
+    window.webkit.messageHandlers.AddToCart.postMessage(JSON.stringify(payload));
+    showToast(`"${n}" aggiunto al carrello`);
+  } catch(e) {
+    showToast(`"${n}" aggiunto al carrello (demo)`);
+  }
+  btn.textContent = '✓ Aggiunto';
+  btn.disabled = true;
+});
+
+let _toastTimer;
+function showToast(msg) {
+  let t = document.getElementById('ps-toast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'ps-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;padding:10px 22px;border-radius:50px;font-size:.82rem;font-weight:600;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;white-space:nowrap;z-index:700;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 2500);
+}
 
 function showTyping() {
   const c = document.getElementById('messages');
