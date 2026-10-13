@@ -55,9 +55,9 @@ export async function startSession(externalKey) {
     body: JSON.stringify(payload),
   });
   const body = await r.text();
-  console.log('[agentforce] startSession response:', r.status, body);
+  console.log('[agentforce] startSession response:', r.status, body.slice(0, 300));
   if (!r.ok) throw new Error(`startSession error: ${r.status} — ${body}`);
-  return (await r.json()).sessionId;
+  return JSON.parse(body).sessionId;
 }
 
 export async function sendMessage(sfSessionId, sequenceId, text) {
