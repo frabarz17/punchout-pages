@@ -80,14 +80,26 @@
   .product-card-price { font-size: .82rem; font-weight: 800; margin-top: 4px; }
   .product-card-badge { font-size: .6rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: .08em; color: var(--weak); margin-bottom: 4px; }
-  .product-card-sizes { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
-  .product-card-sizes span { font-size: .6rem; font-weight: 600; padding: 2px 5px;
-    border: 1px solid var(--border); border-radius: 4px; color: var(--weak); }
   .product-card-btn { display: block; margin-top: 8px; padding: 6px; border-radius: 6px;
     border: 1.5px solid var(--accent); background: none; color: var(--accent);
     font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
     cursor: pointer; font-family: inherit; text-align: center; transition: all .15s; width: 100%; }
   .product-card-btn:hover { background: var(--accent); color: #fff; }
+  .product-card-btn:disabled { border-color: var(--border); color: var(--weak); cursor: default; background: none; }
+
+  /* Size picker popup */
+  .size-picker { display: none; position: absolute; bottom: calc(100% + 6px); left: 0; right: 0;
+    background: var(--bg); border: 1.5px solid var(--accent); border-radius: 10px;
+    padding: 8px; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+  .size-picker.open { display: block; }
+  .size-picker-label { font-size: .6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--weak); margin-bottom: 6px; }
+  .size-picker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .size-pill { padding: 4px 8px; border-radius: 5px; border: 1.5px solid var(--border);
+    background: none; font-size: .7rem; font-weight: 700; cursor: pointer;
+    font-family: inherit; color: var(--text); transition: all .12s; }
+  .size-pill:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .product-card { position: relative; }
 
   /* ── QUICK REPLIES ── */
   .quick-replies { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px 4px; }
@@ -261,11 +273,18 @@ function appendProducts(items) {
     const card = document.createElement('div');
     card.className = 'product-card';
     const currency = p.currency === 'EUR' ? '€' : (p.currency || '€');
-    const colorClean = p.color ? p.color.replace(/^[A-Z0-9]{4,6}\s+/, '') : ''; // strip code prefix e.g. "D007 "
-    const sizesHtml = p.sizes?.length
-      ? `<div class="product-card-sizes">${p.sizes.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : '';
+    const colorClean = p.color ? p.color.replace(/^[A-Z0-9]{4,6}\s+/, '') : '';
     const badgeHtml = (p.category || p.gender)
       ? `<div class="product-card-badge">${esc([p.gender, p.category].filter(Boolean).join(' · '))}</div>` : '';
+    const sizes = p.sizes?.length ? p.sizes : (p.size ? [p.size] : []);
+    const sizesPickerHtml = sizes.length > 1
+      ? `<div class="size-picker" id="sp-${startIdx + i}">
+           <div class="size-picker-label">Scegli la taglia</div>
+           <div class="size-picker-grid">${sizes.map(s =>
+             `<button class="size-pill" data-idx="${startIdx + i}" data-size="${esc(s)}">${esc(s)}</button>`
+           ).join('')}</div>
+         </div>`
+      : '';
     card.innerHTML = `
       <img src="${esc(p.img || '')}" alt="${esc(p.name)}" loading="lazy"
            onerror="this.style.background='#f0f0f0';this.removeAttribute('src')"/>
@@ -274,7 +293,7 @@ function appendProducts(items) {
         <div class="product-card-name">${esc(p.name)}</div>
         ${colorClean ? `<div class="product-card-meta">${esc(colorClean)}</div>` : ''}
         <div class="product-card-price">${currency}${esc(String(p.price || ''))}</div>
-        ${sizesHtml}
+        ${sizesPickerHtml}
         <button class="product-card-btn product-card-add" data-idx="${startIdx + i}">+ Carrello</button>
       </div>`;
     carousel.appendChild(card);
@@ -292,46 +311,76 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 const _psProducts = [];
 
 document.addEventListener('click', e => {
+  // Size pill click — add directly with chosen size
+  const pill = e.target.closest('.size-pill');
+  if (pill) {
+    const idx = parseInt(pill.dataset.idx);
+    const size = pill.dataset.size;
+    doAddToCart(idx, size);
+    return;
+  }
+
+  // Main "+ Carrello" button
   const btn = e.target.closest('.product-card-add');
-  if (!btn) return;
+  if (!btn) {
+    // Click outside — close any open size picker
+    document.querySelectorAll('.size-picker.open').forEach(el => el.classList.remove('open'));
+    return;
+  }
+  e.stopPropagation();
   const idx = parseInt(btn.dataset.idx);
   const p = _psProducts[idx];
   if (!p) return;
 
-  // Build SKU: prefer explicit sku field if it looks like {numeric}_{size}
-  // otherwise construct from article + size/sizes[0]
-  let sku = '';
-  if (p.sku && /^\d+_\S+$/.test(p.sku)) {
-    sku = p.sku;
-  } else {
-    const base = p.article || (p.sku && p.sku.split('_')[0]) || '';
-    const size = p.size || p.sizes?.[0] || '';
-    sku = base && size ? `${base}_${size}` : '';
-  }
+  const sizes = p.sizes?.length ? p.sizes : (p.size ? [p.size] : []);
 
-  console.log('[PersonalShopper AddToCart] sku:', sku, '| raw p.sku:', p.sku, '| p.article:', p.article, '| p.size:', p.size);
+  if (sizes.length === 1) {
+    // Only one size — add immediately
+    doAddToCart(idx, sizes[0]);
+  } else if (sizes.length > 1) {
+    // Toggle size picker
+    const picker = document.getElementById(`sp-${idx}`);
+    if (picker) {
+      document.querySelectorAll('.size-picker.open').forEach(el => { if (el !== picker) el.classList.remove('open'); });
+      picker.classList.toggle('open');
+    }
+  } else {
+    // No size info at all — try with bare article
+    doAddToCart(idx, null);
+  }
+});
+
+function doAddToCart(idx, size) {
+  const p = _psProducts[idx];
+  if (!p) return;
+
+  const base = p.article || (p.sku?.split('_')[0]) || '';
+  const sku = size ? `${base}_${size}` : p.sku || '';
 
   if (!sku || !sku.includes('_')) {
-    showToast('SKU non valido per questo prodotto');
-    console.warn('[PersonalShopper] SKU non valido, prodotto saltato:', p);
+    showToast('SKU non valido — taglia mancante');
     return;
   }
+
+  // Close picker if open
+  const picker = document.getElementById(`sp-${idx}`);
+  picker?.classList.remove('open');
 
   const payload = {
     command: 'AddToCart', debugMode: 0, count: 1,
     products: [{ sku, quantity: 1, price: parseFloat(p.price) || 0, currency: p.currency || 'EUR', image: p.img || '' }],
   };
   console.log('[PersonalShopper AddToCart]', JSON.stringify(payload, null, 2));
-  const n = `${p.name}${p.size || (p.sizes?.[0] ? ' (' + p.sizes[0] + ')' : '')}`;
+  const label = `${p.name} (${size || sku})`;
   try {
     window.webkit.messageHandlers.AddToCart.postMessage(JSON.stringify(payload));
-    showToast(`"${n}" aggiunto al carrello`);
-  } catch(e) {
-    showToast(`"${n}" aggiunto al carrello (demo)`);
+    showToast(`"${label}" aggiunto al carrello`);
+  } catch(err) {
+    showToast(`"${label}" aggiunto al carrello (demo)`);
   }
-  btn.textContent = '✓ Aggiunto';
-  btn.disabled = true;
-});
+  const btn = document.querySelector(`.product-card-add[data-idx="${idx}"]`);
+  if (btn) { btn.textContent = '✓ Aggiunto'; btn.disabled = true; }
+}
 
 let _toastTimer;
 function showToast(msg) {
