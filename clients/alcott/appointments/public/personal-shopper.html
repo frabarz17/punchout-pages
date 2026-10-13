@@ -297,7 +297,26 @@ document.addEventListener('click', e => {
   const idx = parseInt(btn.dataset.idx);
   const p = _psProducts[idx];
   if (!p) return;
-  const sku = p.sku || `${p.article || ''}_${p.size || p.sizes?.[0] || ''}`;
+
+  // Build SKU: prefer explicit sku field if it looks like {numeric}_{size}
+  // otherwise construct from article + size/sizes[0]
+  let sku = '';
+  if (p.sku && /^\d+_\S+$/.test(p.sku)) {
+    sku = p.sku;
+  } else {
+    const base = p.article || (p.sku && p.sku.split('_')[0]) || '';
+    const size = p.size || p.sizes?.[0] || '';
+    sku = base && size ? `${base}_${size}` : '';
+  }
+
+  console.log('[PersonalShopper AddToCart] sku:', sku, '| raw p.sku:', p.sku, '| p.article:', p.article, '| p.size:', p.size);
+
+  if (!sku || !sku.includes('_')) {
+    showToast('SKU non valido per questo prodotto');
+    console.warn('[PersonalShopper] SKU non valido, prodotto saltato:', p);
+    return;
+  }
+
   const payload = {
     command: 'AddToCart', debugMode: 0, count: 1,
     products: [{ sku, quantity: 1, price: parseFloat(p.price) || 0, currency: p.currency || 'EUR', image: p.img || '' }],
