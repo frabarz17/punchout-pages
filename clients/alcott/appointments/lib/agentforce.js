@@ -11,7 +11,6 @@ async function ensureToken() {
     grant_type:    'client_credentials',
     client_id:     process.env.AGENTFORCE_CLIENT_ID     || '',
     client_secret: process.env.AGENTFORCE_CLIENT_SECRET || '',
-    scope:         'api chatbot_api sfap_api',
   });
   const r = await fetch(`${loginUrl}/services/oauth2/token`, {
     method: 'POST', body: params,
@@ -20,8 +19,20 @@ async function ensureToken() {
   const tokenBody = await r.text();
   if (!r.ok) throw new Error(`Agentforce token error: ${r.status} ${tokenBody}`);
   const d = JSON.parse(tokenBody);
-  console.log('[agentforce] token ok, scope:', d.scope);
-  _tokenCache = { accessToken: d.access_token, expiresAt: Date.now() + 25 * 60 * 1000 };
+  const oauthToken  = d.access_token;
+  const instanceUrl = (d.instance_url || loginUrl).replace(/\/$/, '');
+  console.log('[agentforce] oauth token ok, instance_url:', instanceUrl);
+
+  // Exchange OAuth token for an Agentforce JWT via bootstrap
+  const r2 = await fetch(`${instanceUrl}/agentforce/bootstrap/service`, {
+    headers: { Authorization: `Bearer ${oauthToken}` },
+  });
+  const b2 = await r2.text();
+  console.log('[agentforce] bootstrap response:', r2.status, b2.slice(0, 200));
+  if (!r2.ok) throw new Error(`Agentforce bootstrap error: ${r2.status} ${b2}`);
+  const jwt = JSON.parse(b2).access_token;
+
+  _tokenCache = { accessToken: jwt, expiresAt: Date.now() + 25 * 60 * 1000 };
   return _tokenCache.accessToken;
 }
 
