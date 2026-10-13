@@ -1,0 +1,13 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/appointment",       "destination": "/appointments/public/appointment.html" },
+    { "source": "/checkin",           "destination": "/appointments/public/checkin.html" },
+    { "source": "/appointments",      "destination": "/appointments/public/appointments.html" },
+    { "source": "/lookbook",          "destination": "/lookbook/public/lookbook.html" },
+    { "source": "/personal-shopper",  "destination": "/personal-shopper/public/personal-shopper.html" }
+  ],
+  "headers": [
+    { "source": "/api/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}

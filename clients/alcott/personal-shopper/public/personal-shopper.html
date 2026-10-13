@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Personal Shopper — Alcott</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent:  #111111;
+    --bg:      #ffffff;
+    --surface: #f6f6f6;
+    --border:  #e8e8e8;
+    --text:    #111111;
+    --weak:    #888888;
+    --agent-bg: #f0f0f0;
+    --user-bg:  #111111;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Segoe UI', sans-serif;
+    overflow: hidden; }
+
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .header { flex-shrink: 0; background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; gap: 12px; height: 60px; }
+  .header-avatar { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; color: #fff; }
+  .header-info { flex: 1; min-width: 0; }
+  .header-name { font-size: .92rem; font-weight: 800; letter-spacing: -.01em; }
+  .header-sub { font-size: .68rem; color: var(--weak); margin-top: 1px; letter-spacing: .02em; }
+  .status-wrap { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--weak); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .3s; }
+  .status-dot.online { background: #22c55e; }
+
+  /* ── MESSAGES ── */
+  .messages { flex: 1; overflow-y: auto; padding: 20px 16px 8px;
+    display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .messages::-webkit-scrollbar { width: 3px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .msg { display: flex; gap: 8px; max-width: 82%; animation: fadeUp .18s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  .msg.user  { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.agent { align-self: flex-start; }
+
+  .msg-avatar { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; margin-top: 2px;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; color: #fff; }
+
+  .bubble { padding: 10px 14px; border-radius: 18px; font-size: .875rem;
+    line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .msg.agent .bubble { background: var(--agent-bg); border-bottom-left-radius: 4px; color: var(--text); }
+  .msg.user  .bubble { background: var(--user-bg); border-bottom-right-radius: 4px; color: #fff; }
+
+  .typing { display: flex; gap: 4px; align-items: center; padding: 12px 14px;
+    background: var(--agent-bg); border-radius: 18px; border-bottom-left-radius: 4px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--weak);
+    animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+  /* ── PRODUCT CARDS ── */
+  .products-wrap { align-self: stretch; animation: fadeUp .18s ease; }
+  .products-intro { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+  .products-carousel { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .products-carousel::-webkit-scrollbar { display: none; }
+  .product-card { flex-shrink: 0; width: 140px; border: 1.5px solid var(--border); border-radius: 12px;
+    overflow: visible; background: var(--bg); transition: border-color .15s; }
+  .product-card:hover { border-color: var(--accent); }
+  .product-card > img { border-radius: 10px 10px 0 0; }
+  .product-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; background: var(--surface); }
+  .product-card-body { padding: 8px 10px 10px; }
+  .product-card-name { font-size: .72rem; font-weight: 700; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .product-card-meta { font-size: .68rem; color: var(--weak); margin-top: 3px; }
+  .product-card-price { font-size: .82rem; font-weight: 800; margin-top: 4px; }
+  .product-card-badge { font-size: .6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--weak); margin-bottom: 4px; }
+  .product-card-btn { display: block; margin-top: 8px; padding: 6px; border-radius: 6px;
+    border: 1.5px solid var(--accent); background: none; color: var(--accent);
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    cursor: pointer; font-family: inherit; text-align: center; transition: all .15s; width: 100%; }
+  .product-card-btn:hover { background: var(--accent); color: #fff; }
+  .product-card-btn:disabled { border-color: var(--border); color: var(--weak); cursor: default; background: none; }
+
+  /* Size picker — inline expansion inside card body */
+  .size-picker { display: none; padding: 6px 0 2px; }
+  .size-picker.open { display: block; }
+  .size-picker-label { font-size: .6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--weak); margin-bottom: 5px; }
+  .size-picker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .size-pill { padding: 5px 8px; border-radius: 5px; border: 1.5px solid var(--border);
+    background: none; font-size: .7rem; font-weight: 700; cursor: pointer;
+    font-family: inherit; color: var(--text); transition: all .12s; }
+  .size-pill:hover, .size-pill:active { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+  /* ── QUICK REPLIES ── */
+  .quick-replies { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px 4px; }
+  .qr-btn { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+    background: none; color: var(--text); font-size: .78rem; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: border-color .15s; white-space: nowrap; }
+  .qr-btn:hover { border-color: var(--accent); }
+
+  /* ── ERROR ── */
+  .error-banner { flex-shrink: 0; background: #fff5f5; border-top: 1px solid #fcc;
+    color: #c0392b; font-size: .78rem; padding: 8px 16px; text-align: center; display: none; }
+  .error-banner.visible { display: block; }
+
+  /* ── INPUT ── */
+  .input-area { flex-shrink: 0; padding: 10px 16px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: flex-end; background: var(--bg); }
+  .chat-input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 22px;
+    background: var(--surface); color: var(--text); font-size: .875rem; font-family: inherit;
+    outline: none; resize: none; line-height: 1.4; max-height: 100px; transition: border-color .2s;
+    -webkit-appearance: none; }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--weak); }
+  .chat-input:disabled { opacity: .45; }
+  .send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s; }
+  .send-btn:hover { background: #333; }
+  .send-btn:disabled { background: var(--border); cursor: default; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="header">
+    <div class="header-avatar">✦</div>
+    <div class="header-info">
+      <div class="header-name">Personal Shopper AI</div>
+      <div class="header-sub">Alcott — powered by Agentforce</div>
+    </div>
+    <div class="status-wrap">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connessione…</span>
+    </div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="quick-replies" id="quickReplies">
+    <button class="qr-btn" onclick="sendQuick('Ho bisogno di un outfit per un matrimonio')">Matrimonio</button>
+    <button class="qr-btn" onclick="sendQuick('Cercami qualcosa per il lavoro')">Lavoro</button>
+    <button class="qr-btn" onclick="sendQuick('Voglio un look casual per il weekend')">Casual</button>
+    <button class="qr-btn" onclick="sendQuick('Ho bisogno di abbigliamento sportivo')">Sport</button>
+    <button class="qr-btn" onclick="sendQuick('Aiutami a combinare quello che ho già')">Idee outfit</button>
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="input-area">
+    <textarea class="chat-input" id="chatInput" placeholder="Chiedi al tuo personal shopper…"
+      rows="1" disabled
+      onkeydown="handleKey(event)"
+      oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>↑</button>
+  </div>
+</div>
+
+<script>
+let _sessionId  = null;
+let _sequenceId = 0;
+let _waiting    = false;
+
+async function init() {
+  try {
+    const r = await fetch('/api/agent/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Errore avvio sessione');
+    _sessionId  = d.sessionId;
+    _sequenceId = 0;
+    setStatus(true);
+    enableInput();
+    await sendToAgent('ciao');
+  } catch(e) {
+    setStatus(false, 'Non disponibile');
+    showError('Connessione fallita: ' + e.message);
+    console.error('[PersonalShopper init]', e);
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || _waiting) return;
+  input.value = ''; autoResize(input);
+  hideError(); hideQuickReplies();
+  appendMsg('user', text);
+  await sendToAgent(text);
+}
+
+async function sendToAgent(text) {
+  _waiting = true; disableInput();
+  const typingId = showTyping();
+  try {
+    const r = await fetch('/api/agent/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: _sessionId, sequenceId: _sequenceId, message: text }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Errore risposta agente');
+    _sequenceId = d.sequenceId;
+    removeTyping(typingId);
+    for (const resp of d.responses) {
+      if (resp.type === 'text' && resp.content?.trim()) renderAgentMessage(resp.content.trim());
+    }
+  } catch(e) {
+    removeTyping(typingId);
+    showError('Errore: ' + e.message);
+    console.error('[PersonalShopper message]', e);
+  } finally {
+    _waiting = false; enableInput();
+  }
+}
+
+function sendQuick(text) { document.getElementById('chatInput').value = text; sendMessage(); }
+
+function appendMsg(role, text) {
+  const c = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+  if (role === 'agent') {
+    const av = document.createElement('div'); av.className = 'msg-avatar'; av.textContent = '✦';
+    wrap.appendChild(av);
+  }
+  const b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+  wrap.appendChild(b); c.appendChild(wrap); c.scrollTop = c.scrollHeight;
+}
+
+// Parse agent message — splits text / <products>{...}</products> blocks
+function renderAgentMessage(text) {
+  const PRODUCT_RE = /<products>([\s\S]*?)<\/products>/g;
+  const parts = [];
+  let last = 0, m;
+  while ((m = PRODUCT_RE.exec(text)) !== null) {
+    if (m.index > last) parts.push({ type: 'text', content: text.slice(last, m.index).trim() });
+    try { parts.push({ type: 'products', items: JSON.parse(m[1]).items || [] }); } catch {}
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ type: 'text', content: text.slice(last).trim() });
+
+  for (const part of parts) {
+    if (part.type === 'text' && part.content) appendMsg('agent', part.content);
+    else if (part.type === 'products' && part.items.length) appendProducts(part.items);
+  }
+  // fallback — no markers found
+  if (!parts.length) appendMsg('agent', text);
+}
+
+function appendProducts(items) {
+  const c = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'products-wrap';
+
+  const carousel = document.createElement('div');
+  carousel.className = 'products-carousel';
+
+  const startIdx = _psProducts.length;
+  _psProducts.push(...items);
+
+  items.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    const currency = p.currency === 'EUR' ? '€' : (p.currency || '€');
+    const colorClean = p.color ? p.color.replace(/^[A-Z0-9]{4,6}\s+/, '') : '';
+    const badgeHtml = (p.category || p.gender)
+      ? `<div class="product-card-badge">${esc([p.gender, p.category].filter(Boolean).join(' · '))}</div>` : '';
+    const sizes = p.sizes?.length ? p.sizes : (p.size ? [p.size] : []);
+    const sizesPickerHtml = sizes.length > 1
+      ? `<div class="size-picker" id="sp-${startIdx + i}">
+           <div class="size-picker-label">Scegli la taglia</div>
+           <div class="size-picker-grid">${sizes.map(s =>
+             `<button class="size-pill" data-idx="${startIdx + i}" data-size="${esc(s)}">${esc(s)}</button>`
+           ).join('')}</div>
+         </div>`
+      : '';
+    card.innerHTML = `
+      <img src="${esc(p.img || '')}" alt="${esc(p.name)}" loading="lazy"
+           onerror="this.style.background='#f0f0f0';this.removeAttribute('src')"/>
+      <div class="product-card-body">
+        ${badgeHtml}
+        <div class="product-card-name">${esc(p.name)}</div>
+        ${colorClean ? `<div class="product-card-meta">${esc(colorClean)}</div>` : ''}
+        <div class="product-card-price">${currency}${esc(String(p.price || ''))}</div>
+        ${sizesPickerHtml}
+        <button class="product-card-btn product-card-add" data-idx="${startIdx + i}">+ Carrello</button>
+      </div>`;
+    carousel.appendChild(card);
+  });
+
+  wrap.appendChild(carousel);
+  c.appendChild(wrap);
+  c.scrollTop = c.scrollHeight;
+}
+
+function openProduct(url) { if (url) window.open(url, '_blank'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Registry of all products shown in cards — indexed by data-idx
+const _psProducts = [];
+
+document.addEventListener('click', e => {
+  // Size pill click — add directly with chosen size
+  const pill = e.target.closest('.size-pill');
+  if (pill) {
+    const idx = parseInt(pill.dataset.idx);
+    const size = pill.dataset.size;
+    doAddToCart(idx, size);
+    return;
+  }
+
+  // Main "+ Carrello" button
+  const btn = e.target.closest('.product-card-add');
+  if (!btn) {
+    // Click outside — close any open size picker
+    document.querySelectorAll('.size-picker.open').forEach(el => el.classList.remove('open'));
+    return;
+  }
+  e.stopPropagation();
+  const idx = parseInt(btn.dataset.idx);
+  const p = _psProducts[idx];
+  if (!p) return;
+
+  const sizes = p.sizes?.length ? p.sizes : (p.size ? [p.size] : []);
+
+  if (sizes.length === 1) {
+    // Only one size — add immediately
+    doAddToCart(idx, sizes[0]);
+  } else if (sizes.length > 1) {
+    // Toggle size picker
+    const picker = document.getElementById(`sp-${idx}`);
+    if (picker) {
+      document.querySelectorAll('.size-picker.open').forEach(el => { if (el !== picker) el.classList.remove('open'); });
+      picker.classList.toggle('open');
+    }
+  } else {
+    // No size info at all — try with bare article
+    doAddToCart(idx, null);
+  }
+});
+
+function doAddToCart(idx, size) {
+  const p = _psProducts[idx];
+  if (!p) return;
+
+  const base = p.article || (p.sku?.split('_')[0]) || '';
+  const sku = size ? `${base}_${size}` : p.sku || '';
+
+  if (!sku || !sku.includes('_')) {
+    showToast('SKU non valido — taglia mancante');
+    return;
+  }
+
+  // Close picker if open
+  const picker = document.getElementById(`sp-${idx}`);
+  picker?.classList.remove('open');
+
+  const payload = {
+    command: 'AddToCart', debugMode: 0, count: 1,
+    products: [{ sku, quantity: 1, price: parseFloat(p.price) || 0, currency: p.currency || 'EUR', image: p.img || '' }],
+  };
+  console.log('[PersonalShopper AddToCart]', JSON.stringify(payload, null, 2));
+  const label = `${p.name} (${size || sku})`;
+  try {
+    window.webkit.messageHandlers.AddToCart.postMessage(JSON.stringify(payload));
+    showToast(`"${label}" aggiunto al carrello`);
+  } catch(err) {
+    showToast(`"${label}" aggiunto al carrello (demo)`);
+  }
+  const btn = document.querySelector(`.product-card-add[data-idx="${idx}"]`);
+  if (btn) { btn.textContent = '✓ Aggiunto'; btn.disabled = true; }
+}
+
+let _toastTimer;
+function showToast(msg) {
+  let t = document.getElementById('ps-toast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'ps-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;padding:10px 22px;border-radius:50px;font-size:.82rem;font-weight:600;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;white-space:nowrap;z-index:700;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 2500);
+}
+
+function showTyping() {
+  const c = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  const id = 'typing-' + Math.random().toString(36).slice(2);
+  wrap.id = id; wrap.className = 'msg agent';
+  wrap.innerHTML = '<div class="msg-avatar">✦</div><div class="typing"><span></span><span></span><span></span></div>';
+  c.appendChild(wrap); c.scrollTop = c.scrollHeight; return id;
+}
+
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+function setStatus(online, label) {
+  document.getElementById('statusDot').className = 'status-dot' + (online ? ' online' : '');
+  document.getElementById('statusText').textContent = label ?? (online ? 'Online' : 'Offline');
+}
+function enableInput()  { document.getElementById('chatInput').disabled = false; document.getElementById('sendBtn').disabled = false; document.getElementById('chatInput').focus(); }
+function disableInput() { document.getElementById('chatInput').disabled = true;  document.getElementById('sendBtn').disabled = true; }
+function hideQuickReplies() { document.getElementById('quickReplies').style.display = 'none'; }
+function showError(msg) { const b = document.getElementById('errorBanner'); b.textContent = msg; b.classList.add('visible'); }
+function hideError()    { document.getElementById('errorBanner').classList.remove('visible'); }
+function handleKey(e)   { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+
+window.addEventListener('beforeunload', () => {
+  if (_sessionId) navigator.sendBeacon('/api/agent/end', JSON.stringify({ sessionId: _sessionId }));
+});
+
+init();
+</script>
+</body>
+</html>

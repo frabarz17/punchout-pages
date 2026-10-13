@@ -1,0 +1,10 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/",                  "destination": "/public/personal-shopper.html" },
+    { "source": "/personal-shopper",  "destination": "/public/personal-shopper.html" }
+  ],
+  "headers": [
+    { "source": "/api/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}

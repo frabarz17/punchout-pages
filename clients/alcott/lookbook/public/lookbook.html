@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Alcott — Lookbook</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent:  #111111;
+    --accent-d:#333333;
+    --bg:      #ffffff;
+    --surface: #f6f6f6;
+    --border:  #e8e8e8;
+    --text:    #111111;
+    --weak:    #888888;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Segoe UI', sans-serif;
+    overflow: hidden; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .header { flex-shrink: 0; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 20px; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 12px; }
+  .brand { font-size: 1.1rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .search-wrap { position: relative; }
+  .search-input {
+    padding: 7px 32px 7px 12px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: var(--surface); font-size: .82rem; font-family: inherit;
+    color: var(--text); outline: none; width: 160px; transition: border-color .2s, width .3s;
+    -webkit-appearance: none;
+  }
+  .search-input:focus { border-color: var(--accent); width: 200px; }
+  .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; pointer-events: none; }
+  .btn-debug { padding: 6px 10px; border-radius: 6px; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    border: 1.5px solid var(--border); background: none; color: var(--weak);
+    cursor: pointer; letter-spacing: .04em; transition: all .15s; white-space: nowrap; font-family: inherit; }
+  .btn-debug.active { border-color: #f59e0b; color: #92400e; background: #fff3e0; }
+
+  /* ── FILTER BAR ── */
+  .filter-bar { display: flex; align-items: center; overflow-x: auto; scrollbar-width: none;
+    border-bottom: 1px solid var(--border); padding: 0 16px; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 12px 13px; font-size: .73rem; font-weight: 700; white-space: nowrap;
+    border: none; background: none; color: var(--weak); cursor: pointer;
+    letter-spacing: .06em; text-transform: uppercase; position: relative;
+    transition: color .15s; font-family: inherit; display: flex; align-items: center; gap: 4px; }
+  .filter-chip::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px; background: var(--accent); transform: scaleX(0); transition: transform .2s; }
+  .filter-chip:hover { color: var(--accent); }
+  .filter-chip.active { color: var(--accent); }
+  .filter-chip.active::after { transform: scaleX(1); }
+  .chip-count { font-size: .64rem; opacity: .6; font-weight: 400; }
+
+  /* ── GRID ── */
+  .content { flex: 1; overflow-y: auto; min-height: 0; }
+  /* iPad portrait (768px): 5 col — iPad landscape (1024px): 6 col */
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); }
+  @media (min-width: 600px)  { .grid { grid-template-columns: repeat(5, 1fr); } }
+  @media (min-width: 900px)  { .grid { grid-template-columns: repeat(6, 1fr); } }
+  @media (min-width: 1200px) { .grid { grid-template-columns: repeat(8, 1fr); } }
+
+  .product-tile { background: var(--bg); cursor: pointer; position: relative; overflow: hidden;
+    aspect-ratio: 3/4; transition: opacity .15s; }
+  .product-tile:active { opacity: .8; }
+  .product-tile:hover .tile-back { opacity: 1; }
+  .tile-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile-back { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+  .tile-overlay { position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);
+    padding: 24px 10px 10px; pointer-events: none; }
+  .tile-name { font-size: .7rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile-price { font-size: .68rem; color: rgba(255,255,255,.75); margin-top: 1px; }
+  .tile-check { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); display: none; align-items: center; justify-content: center; z-index: 5; pointer-events: none; }
+  .tile-check svg { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.5; }
+  .product-tile.selected .tile-check { display: flex; }
+  .product-tile.selected { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+  /* Load more (unused — kept for safety) */
+  .load-more-wrap { display: none !important; }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,.5); align-items: flex-end; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--bg); width: 100%; max-width: 560px; max-height: 92vh;
+    border-radius: 16px 16px 0 0; overflow: hidden; display: flex; flex-direction: column;
+    animation: slideup .25s ease; }
+  @keyframes slideup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  .modal-imgs { position: relative; flex-shrink: 0; background: var(--surface); }
+  .modal-main-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+  .modal-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px;
+    border-radius: 50%; background: rgba(255,255,255,.92); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: var(--accent); z-index: 10; }
+
+  .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px 0; }
+  .modal-cat { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--weak); margin-bottom: 4px; }
+  .modal-name { font-size: 1.1rem; font-weight: 800; letter-spacing: -.01em; margin-bottom: 4px; }
+  .modal-price { font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+  .modal-desc { font-size: .82rem; color: var(--weak); line-height: 1.65; margin-bottom: 14px; }
+
+  /* Color selector */
+  .selector-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--weak); margin-bottom: 8px; }
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .color-chip { padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: none; font-size: .75rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    color: var(--text); transition: all .15s; white-space: nowrap; }
+  .color-chip:hover { border-color: var(--accent); }
+  .color-chip.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+  /* Size selector */
+  .size-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .size-chip { width: 44px; height: 44px; border-radius: 6px; border: 1.5px solid var(--border);
+    background: none; font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit;
+    color: var(--text); transition: all .15s; display: flex; align-items: center; justify-content: center; }
+  .size-chip:hover { border-color: var(--accent); }
+  .size-chip.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+  .modal-actions { display: flex; gap: 10px; padding: 16px 20px 28px; flex-shrink: 0;
+    border-top: 1px solid var(--border); margin-top: 16px; }
+  .btn-add { flex: 1; padding: 14px; border-radius: 6px; border: 2px solid var(--accent);
+    background: none; color: var(--accent); font-size: .88rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; cursor: pointer; transition: all .15s; font-family: inherit; }
+  .btn-add:hover, .btn-add.added { background: var(--accent); color: #fff; }
+  .btn-add:disabled { border-color: var(--border); color: var(--weak); cursor: default; background: none; }
+  .btn-site { padding: 14px 18px; border-radius: 6px; border: 1.5px solid var(--border);
+    background: none; color: var(--text); font-size: .88rem; font-weight: 600;
+    cursor: pointer; transition: all .15s; white-space: nowrap; text-decoration: none;
+    display: flex; align-items: center; gap: 5px; font-family: inherit; }
+  .btn-site:hover { border-color: var(--accent); }
+
+  /* ── FAB ── */
+  .fab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: #fff; border: none; border-radius: 50px;
+    padding: 14px 28px; font-size: .95rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .15s;
+    z-index: 400; white-space: nowrap; }
+  .fab.visible { transform: translateX(-50%) translateY(0); }
+  .fab:hover { background: #333; }
+  .fab:active { transform: translateX(-50%) scale(.97); }
+  .fab-badge { background: #fff; color: var(--accent); border-radius: 50%; width: 24px; height: 24px;
+    font-size: .8rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+
+  /* ── CART ── */
+  .cart-overlay { display: none; position: fixed; inset: 0; z-index: 600;
+    background: rgba(0,0,0,.5); align-items: flex-end; justify-content: center; }
+  .cart-overlay.show { display: flex; }
+  .cart-panel { background: var(--bg); width: 100%; max-width: 560px; max-height: 80vh;
+    border-radius: 16px 16px 0 0; display: flex; flex-direction: column; animation: slideup .25s ease; overflow: hidden; }
+  .cart-header { display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .cart-title { font-size: 1rem; font-weight: 800; }
+  .cart-close { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--weak); padding: 4px; }
+  .cart-list { flex: 1; overflow-y: auto; padding: 12px 20px; }
+  .cart-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item-img { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--surface); }
+  .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item-name { font-size: .85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cart-item-meta { font-size: .75rem; color: var(--weak); margin-top: 2px; }
+  .cart-item-remove { background: none; border: none; cursor: pointer; padding: 6px; color: var(--weak); font-size: 1rem; flex-shrink: 0; transition: color .15s; }
+  .cart-item-remove:hover { color: #c0392b; }
+  .cart-footer { padding: 16px 20px 28px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .btn-send-cart { width: 100%; padding: 15px; border-radius: 6px; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font-size: .95rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; font-family: inherit; transition: background .15s; }
+  .btn-send-cart:hover { background: #333; }
+  .btn-send-cart.debug-mode { background: #92400e; }
+
+  /* ── MISC ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--weak); font-size: .9rem; }
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--accent); color: #fff; padding: 10px 22px; border-radius: 50px;
+    font-size: .82rem; font-weight: 600; opacity: 0; transition: opacity .22s, transform .22s;
+    pointer-events: none; white-space: nowrap; z-index: 700; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .debug-overlay { display: none; position: fixed; inset: 0; z-index: 800;
+    background: rgba(0,0,0,.6); align-items: flex-end; justify-content: center; }
+  .debug-overlay.show { display: flex; }
+  .debug-panel { background: var(--bg); border: 1px solid #f59e0b; border-radius: 16px 16px 0 0;
+    width: 100%; max-width: 520px; padding: 22px 22px 36px; }
+  .debug-panel-title { font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: #92400e; margin-bottom: 12px; }
+  .debug-payload { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; font-family: 'SF Mono', monospace; font-size: .76rem; color: #333;
+    white-space: pre; overflow-x: auto; max-height: 280px; margin-bottom: 16px; line-height: 1.6; }
+  .debug-actions { display: flex; gap: 10px; }
+  .btn-dbg-send { flex: 1; padding: 14px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font-size: .9rem; font-weight: 700; font-family: inherit; }
+  .btn-dbg-cancel { padding: 14px 22px; border-radius: 8px; border: 1.5px solid var(--border);
+    background: none; color: var(--weak); font-size: .9rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="header">
+    <div class="header-top">
+      <div class="brand">Alcott</div>
+      <div class="header-right">
+        <div class="search-wrap">
+          <input class="search-input" id="searchInput" type="text" placeholder="Cerca…"
+            oninput="applyFilters()" autocomplete="off" autocorrect="off" spellcheck="false"/>
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+        <button class="btn-debug" id="btnDebug" onclick="toggleDebug()">Debug</button>
+      </div>
+    </div>
+    <div class="filter-bar" id="filterBar"></div>
+  </div>
+
+  <div class="content">
+    <div class="grid" id="grid"></div>
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
+      <button class="btn-load-more" onclick="loadMore()">Carica altri <span id="loadMoreCount"></span></button>
+    </div>
+    <div class="empty" id="emptyMsg" style="display:none">Nessun prodotto trovato.</div>
+  </div>
+</div>
+
+<button class="fab" id="fab" onclick="openCart()">
+  <span>Selezione</span>
+  <span class="fab-badge" id="fabBadge">0</span>
+</button>
+
+<!-- Product modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-imgs">
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+      <img class="modal-main-img" id="modalImg" src="" alt=""/>
+    </div>
+    <div class="modal-body">
+      <div class="modal-cat" id="modalCat"></div>
+      <div class="modal-name" id="modalName"></div>
+      <div class="modal-price" id="modalPrice"></div>
+      <div class="modal-desc" id="modalDesc"></div>
+      <div id="colorSection">
+        <div class="selector-label">Colore: <span id="colorLabel"></span></div>
+        <div class="color-row" id="colorRow"></div>
+      </div>
+      <div id="sizeSection">
+        <div class="selector-label">Taglia</div>
+        <div class="size-row" id="sizeRow"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-add" id="btnAdd" onclick="toggleSelect()">+ Aggiungi alla selezione</button>
+      <a class="btn-site" id="btnSite" href="#" target="_blank">
+        Sito
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Cart -->
+<div class="cart-overlay" id="cartOverlay" onclick="cartOverlayClick(event)">
+  <div class="cart-panel">
+    <div class="cart-header">
+      <div class="cart-title">Selezione (<span id="cartCount">0</span>)</div>
+      <button class="cart-close" onclick="closeCart()">&#x2715;</button>
+    </div>
+    <div class="cart-list" id="cartList"></div>
+    <div class="cart-footer">
+      <button class="btn-send-cart" id="btnSendCart" onclick="sendCart()">Invia al POS</button>
+    </div>
+  </div>
+</div>
+
+<!-- Debug -->
+<div class="debug-overlay" id="debugOverlay">
+  <div class="debug-panel">
+    <div class="debug-panel-title">⚠ Debug — Payload AddToCart</div>
+    <div class="debug-payload" id="debugPayload"></div>
+    <div class="debug-actions">
+      <button class="btn-dbg-send" onclick="debugSend()">Invia comunque →</button>
+      <button class="btn-dbg-cancel" onclick="debugCancel()">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CATALOG = [{"i":"TS0740DOAY16","n":"Maglietta in cotone slim fit","d":"L'essenziale perfetto per costruire ogni look quotidiano con pulizia e precisione. Questa t-shirt a maniche corte si distingue per una silhouette aderente slim fit che valorizza de","c":"T-Shirt","p":"6.99","l":"https://www.alcott.eu/it_IT/donna/abbigliamento/t-shirt/basic/maglietta-in-cotone-slim-fit/05008001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwed42f023/hi-res/TS0740DOAY16_WH3_001.jpg","v":[{"k":"BIANCO OTTICO","b":"05008001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwed42f023/hi-res/TS0740DOAY16_WH3_001.jpg","z":["XS","S","M","L","XL"]},{"k":"AZZURRO CHIARO","b":"05008004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe8967e4e/hi-res/TS0740DOAY16_AZ3_001.jpg","z":["XS","S","M","L","XL"]},{"k":"KAKY MEDIO","b":"05008005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwbf9cfdcf/hi-res/TS0740DOAY16_KY2_001.jpg","z":["XS","S","M","XL"]},{"k":"NAVY CHIARO","b":"05008006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw460cdc83/hi-res/TS0740DOAY16_NA3_001.jpg","z":["XS","S","M","L","XL"]},{"k":"NERO","b":"05008002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw26ad0620/hi-res/TS0740DOAY16_BK1_001.jpg","z":["XS","S","M","XL"]},{"k":"MARRONE MEDIO","b":"05008003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw35deda61/hi-res/TS0740DOAY16_BR2_001.jpg","z":["XS","M","L","XL"]}]},{"i":"TS0230UOAY15","n":"Maglietta in misto lino a maniche corte","d":"Maglietta realizzata in misto lino e cotone slub a maniche corte  in tinta unita. Vestibilità: regular fit. La taglia in foto è una L. Altezza modello: 185 cm.","c":"T-Shirt","p":"8.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-in-misto-lino-a-maniche-corte/00976004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw81af0a0f/hi-res/TS0230UOAY15_BG3_001.jpg","v":[{"k":"BEIGE CHIARO","b":"00976004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw81af0a0f/hi-res/TS0230UOAY15_BG3_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"PANNA","b":"00976001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwbf43f4ef/hi-res/TS0230UOAY15_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"KAKY MEDIO","b":"00976003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb57c0f52/hi-res/TS0230UOAY15_KY2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY MEDIO","b":"00976002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfd8d96a0/hi-res/TS0230UOAY15_NA2_001.jpg","z":["S","M","L"]}]},{"i":"TS0262UOAY15","n":"Maglietta boxy fit in cotone","d":"Maglietta realizzata in 100% cotone in tinta unita  a maniche corte  girocollo  vestibilità: boxy fit. La taglia in foto è una L. Altezza modello: 185 cm.","c":"T-Shirt","p":"5.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-boxy-fit-in-cotone/01045007.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6a5c55bd/hi-res/TS0262UOAY15_KY2_001.jpg","v":[{"k":"KAKY MEDIO","b":"01045007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6a5c55bd/hi-res/TS0262UOAY15_KY2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"01045006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd15d1c57/hi-res/TS0262UOAY15_BG2_001.jpg","z":["XS","S","XXL"]},{"k":"NERO","b":"01045005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0bed5d94/hi-res/TS0262UOAY15_BK1_001.jpg","z":["XS"]}]},{"i":"TS6580UOAY16","n":"Maglietta basic in cotone","d":"Maglietta girocollo realizzata in 100% cotton combed a maniche corte  tinta unita  vestibilità: regular fit. Disponibile in diversi colori. La taglia nella foto è una L. Altezza mo","c":"T-Shirt","p":"8.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-basic-in-cotone/04331010.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw457cd11a/hi-res/TS6580UOAY16_KY2_001.jpg","v":[{"k":"KAKY MEDIO","b":"04331010","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw457cd11a/hi-res/TS6580UOAY16_KY2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"NAVY SCURO","b":"04331002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw33eb4ad4/hi-res/TS6580UOAY16_NA1_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"PANNA","b":"04331001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw1873f977/hi-res/TS6580UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"BEIGE MEDIO","b":"04331013","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw078af7ae/hi-res/TS6580UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"GRIGIO MEDIO","b":"04331014","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb4bbf311/hi-res/TS6580UOAY16_GY2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"MARRONE SCURO","b":"04331006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw128fd7d8/hi-res/TS6580UOAY16_BR1_001.jpg","z":["S"]},{"k":"MARRONE MEDIO","b":"04331009","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw9327b147/hi-res/TS6580UOAY16_BR2_001.jpg","z":["M","XXL"]},{"k":"KAKY CHIARO","b":"04331015","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw638261b8/hi-res/TS6580UOAY16_KY3_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"ROSA SCURO","b":"04331008","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfe949ced/hi-res/TS6580UOAY16_PK1_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"AZZURRO CHIARO","b":"04331012","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd7785d5c/hi-res/TS6580UOAY16_AZ3_001.jpg","z":["S","M","L","XXL","3XL"]},{"k":"ROSA CHIARO","b":"04331016","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw31c52a2b/hi-res/TS6580UOAY16_PK3_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"GIALLO MEDIO","b":"04331011","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfc34fe3d/hi-res/TS6580UOAY16_YE2_001.jpg","z":["M","L"]},{"k":"NERO","b":"04331003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw09a9ffc4/hi-res/TS6580UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL","3XL"]}]},{"i":"TS1187UOAY16","n":"Maglietta polo con stampa Art Studio","d":"Maglietta a maniche corte con collo polo  dal carattere vintage ma con design contemporaneo  con un pattern a micro-scacchi azzurro e bianco e stampa lettering a contrasto ART STUD","c":"T-Shirt","p":"35.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-polo-con-stampa-art-studio/05505001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw81c7c50e/hi-res/TS1187UOAY16_AZ3_001.jpg","v":[{"k":"AZZURRO CHIARO","b":"05505001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw81c7c50e/hi-res/TS1187UOAY16_AZ3_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"TS1303UOAY16","n":"Maglietta boxy fit Capri Amore mio","d":"Maglietta realizzata in 100% cotone morbido  fresco e ad alta densità per mantenere un fit impeccabile  a maniche corte  con stampa Capri Amore Mio. Questa capsule unisce la nostal","c":"T-Shirt","p":"17.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-boxy-fit-capri-amore-mio/07044001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa2cb3561/hi-res/TS1303UOAY16_WH1_001.jpg","v":[{"k":"OFF WHITE","b":"07044001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa2cb3561/hi-res/TS1303UOAY16_WH1_001.jpg","z":["S","M","L","XL"]}]},{"i":"TS1277UOAY16","n":"Maglietta boxy fit con stampa Urban","d":"Eleva il tuo stile underground con questa t-shirt dal taglio boxy e squadrato. Caratterizzata da una base total black ad alta densità  si distingue per il raffinato profilo bianco ","c":"T-Shirt","p":"25.99","l":"https://www.alcott.eu/it_IT/uomo/abbigliamento/t-shirt/boxy-fit/maglietta-boxy-fit-con-stampa-urban/07180001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw38e5ac08/hi-res/TS1277UOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"07180001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw38e5ac08/hi-res/TS1277UOAY16_BK1_001.jpg","z":["XS","S","M","XL"]}]},{"i":"TS4203UOAY16","n":"Maglietta serafino in cotone","d":"Maglietta realizzata in 100% cotone con collo serafino con bottoncini  maniche corte. La taglia in foto è una L. Altezza modello: 185 cm.","c":"T-Shirt","p":"15.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-serafino-in-cotone/04352002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw13eeb681/hi-res/TS4203UOAY16_BG2_001.jpg","v":[{"k":"BEIGE MEDIO","b":"04352002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw13eeb681/hi-res/TS4203UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"PANNA","b":"04352001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw67fff620/hi-res/TS4203UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE MEDIO","b":"04352006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw1f482a9b/hi-res/TS4203UOAY16_BR2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BLU MEDIO","b":"04352003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw57fbe45e/hi-res/TS4203UOAY16_BL2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"KAKY MEDIO","b":"04352005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa0bbb53b/hi-res/TS4203UOAY16_KY2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NERO CARBONE","b":"04352004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd7e23c0c/hi-res/TS4203UOAY16_BK3_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"TS1394UOAY16","n":"Maglietta Mondiali boxy fit","d":"L'estetica atletica vintage e il fascino senza tempo delle divise calcistiche d'archivio si fondono in questa t-shirt ringer ricca di stile. Il modello a maniche corte si distingue","c":"T-Shirt","p":"9.99","l":"https://www.alcott.eu/it_IT/abbigliamento/t-shirt/maglietta-mondiali-boxy-fit/07678002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw349368a0/hi-res/TS1394UOAY16_YE2_001.jpg","v":[{"k":"GIALLO MEDIO","b":"07678002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw349368a0/hi-res/TS1394UOAY16_YE2_001.jpg","z":["XS","S","M"]},{"k":"AZZURRO MEDIO","b":"07678001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6ba21940/hi-res/TS1394UOAY16_AZ2_001.jpg","z":["XS","S","M","L","XL"]},{"k":"OFF WHITE","b":"07678003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw39245b4e/hi-res/TS1394UOAY16_WH1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"07678004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw5a1a9c3d/hi-res/TS1394UOAY16_NA1_001.jpg","z":["XS","S","M","L","XL","XXL"]}]},{"i":"TS0260UOAY16","n":"Maglietta in misto lino con scollo a V","d":"Maglietta realizzata in misto lino e cotone slub a maniche corte  con scollo a V e bottoncini a contrasto  in tinta unita. Vestibilità: regular fit. La taglia in foto è una L. Alte","c":"T-Shirt","p":"15.99","l":"https://www.alcott.eu/it_IT/uomo/combo/t-shirt/maglietta-in-misto-lino-con-scollo-a-v/04271001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw65c01770/hi-res/TS0260UOAY16_WH2_001.jpg","v":[{"k":"PANNA","b":"04271001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw65c01770/hi-res/TS0260UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY MEDIO","b":"04271002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf5e22b8a/hi-res/TS0260UOAY16_NA2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NERO","b":"04271005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dweaceb5fe/hi-res/TS0260UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE CHIARO","b":"04271004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8cd396be/hi-res/TS0260UOAY16_BG3_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"KAKY MEDIO","b":"04271003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa90cfb91/hi-res/TS0260UOAY16_KY2_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"CF0281UOAY16","n":"Camicia con tasconi","d":"Camicia a maniche lunghe con collo a revers realizzati in tessuto con viscosa  tasche frontali. La taglia in foto è una L. Altezza modello: 186 cm.","c":"Camicie","p":"9.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-con-tasconi/04264003.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwac6161ad/hi-res/CF0281UOAY16_NA1_001.jpg","v":[{"k":"NAVY SCURO","b":"04264003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwac6161ad/hi-res/CF0281UOAY16_NA1_001.jpg","z":["L"]},{"k":"NERO","b":"04264001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc9a8f25b/hi-res/CF0281UOAY16_BK1_001.jpg","z":["XL","XXL"]},{"k":"BEIGE MEDIO","b":"04264002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw679c8007/hi-res/CF0281UOAY16_BG2_001.jpg","z":["XXL"]}]},{"i":"CF1252UOAY16","n":"Camicia a manica lunga in tinta unita","d":"Camicia basic in tinta unita con collo a revers e maniche lunghe con polsino e bottone. Chiusura anteriore con bottoni. La taglia in foto è L. Altezza modello: 186 cm.","c":"Camicie","p":"15.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-a-manica-lunga-in-tinta-unita/04334004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw56626e09/hi-res/CF1252UOAY16_AZ1_001.jpg","v":[{"k":"AZZURRO SCURO","b":"04334004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw56626e09/hi-res/CF1252UOAY16_AZ1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"04334005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6f45f0e7/hi-res/CF1252UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"04334003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw34fbc116/hi-res/CF1252UOAY16_NA1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"OFF WHITE","b":"04334002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw10609ee8/hi-res/CF1252UOAY16_WH1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"CF0298UOAY16","n":"Camicia texturizzata regular fit","d":"Camicia realizzata in tessuto texturizzato in tinta unita  con collo bowling  a maniche corte  vestibilità: regular fit. Disponibili pantaloni e bermuda coordinati. La taglia in fo","c":"Camicie","p":"9.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-texturizzata-regular-fit/04477004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa9364913/hi-res/CF0298UOAY16_KY3_001.jpg","v":[{"k":"KAKY CHIARO","b":"04477004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa9364913/hi-res/CF0298UOAY16_KY3_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"PANNA","b":"04477006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw42cde678/hi-res/CF0298UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"04477001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw600b7686/hi-res/CF0298UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"04477003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw60f5960a/hi-res/CF0298UOAY16_NA1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE SCURO","b":"04477005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw3111a948/hi-res/CF0298UOAY16_BR1_001.jpg","z":["S","M","L","XL"]}]},{"i":"CF1995UOAY16","n":"Camicia in puro lino a maniche lunghe","d":"Camicia realizzata in 100% lino in tinta unita  collo a revers e maniche lunghe con polsino con bottone. Chiusura frontale con bottoni. La taglia in foto è una L. Altezza modello: ","c":"Camicie","p":"39.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-in-puro-lino-a-maniche-lunghe/03825007.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6a5c91e3/hi-res/CF1995UOAY16_BR2_001.jpg","v":[{"k":"MARRONE MEDIO","b":"03825007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6a5c91e3/hi-res/CF1995UOAY16_BR2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"BEIGE MEDIO MELANGE","b":"03825006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd7d29af7/hi-res/CF1995UOAY16_MBG2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"NAVY MEDIO","b":"03825005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf9164889/hi-res/CF1995UOAY16_NA2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"NERO","b":"03825008","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwedd17eeb/hi-res/CF1995UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"MSA2 SAND MEL MEDIUM","b":"03825003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc38a34ac/hi-res/CF1995UOAY16_MSA2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"KAKY MEDIO","b":"03825004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw86977991/hi-res/CF1995UOAY16_KY2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"BIANCO OTTICO","b":"03825002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw09cb952a/hi-res/CF1995UOAY16_WH3_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"AZZURRO CHIARO","b":"03825001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwebf17578/hi-res/CF1995UOAY16_AZ3_001.jpg","z":["S","M","L","XL","XXL","3XL"]}]},{"i":"CF0324UOAY16","n":"Camicia Bowling in Misto Lino","d":"La freschezza senza tempo del lino incontra il design contemporaneo in questa camicia a maniche corte  il capo ideale per affrontare con stile le giornate più calde. Realizzata in ","c":"Camicie","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-bowling-in-misto-lino/04512002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc5cfe881/hi-res/CF0324UOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"04512002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc5cfe881/hi-res/CF0324UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE MEDIO MELANGE","b":"04512001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwdf0d67d7/hi-res/CF0324UOAY16_MBR2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"OFF WHITE","b":"04512003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw284c5ab4/hi-res/CF0324UOAY16_WH1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"CF0279UOAY16","n":"Polo Camicia in Misto Lino","d":"Camicia a maniche corte realizzata in fresco misto lino  con un design che si distingue per lo scollo a mezza placchetta (stile serafino) con abbottonatura parziale sul petto e bot","c":"Camicie","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/polo-camicia-in-misto-lino/04513003.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd3e9c99f/hi-res/CF0279UOAY16_NA2_001.jpg","v":[{"k":"NAVY MEDIO","b":"04513003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd3e9c99f/hi-res/CF0279UOAY16_NA2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO MELANGE","b":"04513002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw23843773/hi-res/CF0279UOAY16_MBG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"OFF WHITE","b":"04513001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw5721a156/hi-res/CF0279UOAY16_WH1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"CF2215UOAY16","n":"Camicia in misto lino con collo bowling","d":"Camicia a maniche corte in misto lino  tinta unita con collo bowling  chiusura con bottoni  Taschino applicato sul petto per un tocco pratico. Vestibilità: regular fit. La taglia i","c":"Camicie","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-in-misto-lino-con-collo-bowling/04722004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8f2a6055/hi-res/CF2215UOAY16_MBG3_001.jpg","v":[{"k":"BEIGE CHIARO MELANGE","b":"04722004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8f2a6055/hi-res/CF2215UOAY16_MBG3_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"KAKY CHIARO","b":"04722002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw3a50ef1a/hi-res/CF2215UOAY16_KY3_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"AZZURRO MEDIO","b":"04722005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw45e6fa77/hi-res/CF2215UOAY16_AZ2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BLU MEDIO","b":"04722003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw83784b43/hi-res/CF2215UOAY16_BL2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"OFF WHITE","b":"04722001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa80a6f4f/hi-res/CF2215UOAY16_WH1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"CF0044UOAY15","n":"Camicia in misto lino con taschino","d":"Camicia realizzata in misto lino a maniche corte con collo bowling e taschino applicato  bottoni tono su tono  vestibilità: regular fit. La taglia in foto è una L. Altezza modello:","c":"Camicie","p":"12.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-in-misto-lino-con-taschino/01799001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw040fc685/hi-res/CF0044UOAY15_WH2_001.jpg","v":[{"k":"PANNA","b":"01799001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw040fc685/hi-res/CF0044UOAY15_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE CHIARO","b":"01799002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw431186b1/hi-res/CF0044UOAY15_BG3_001.jpg","z":["S","L","XL","XXL"]}]},{"i":"CF0009UOAY16","n":"Camicia con collo coreano","d":"Camicia a casacca in tinta unita con bottoncini e collo coreano  vestibilità morbida. La taglia in foto è una L. Altezza modello: 184 cm.","c":"Camicie","p":"19.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-con-collo-coreano/04324007.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa8795bd8/hi-res/CF0009UOAY16_BR2_001.jpg","v":[{"k":"MARRONE MEDIO","b":"04324007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa8795bd8/hi-res/CF0009UOAY16_BR2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"NAVY MEDIO","b":"04324002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw47ef53eb/hi-res/CF0009UOAY16_NA2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"NERO","b":"04324004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwce25462c/hi-res/CF0009UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"KAKY MEDIO","b":"04324005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8da2f094/hi-res/CF0009UOAY16_KY2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"PANNA","b":"04324001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw62a36e2c/hi-res/CF0009UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"AZZURRO CHIARO","b":"04324006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd33c3e59/hi-res/CF0009UOAY16_AZ3_001.jpg","z":["S","M","L","XL","XXL","3XL"]},{"k":"BEIGE CHIARO","b":"04324003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw55a14319/hi-res/CF0009UOAY16_BG3_001.jpg","z":["S","M","L","XL","XXL","3XL"]}]},{"i":"CF2446UO","n":"Camicia in twill con tasconi","d":"Camicia a maniche corte in twill con tasconi frontali. Vestibilità: comfort fit. La taglia in foto è una L. Altezza modello: 186 cm.","c":"Camicie","p":"7.99","l":"https://www.alcott.eu/it_IT/abbigliamento/camicie/camicia-in-twill-con-tasconi/99836002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwba9fe808/hi-res/CF2446UO_KY2_001.jpg","v":[{"k":"KAKY MEDIO","b":"99836002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwba9fe808/hi-res/CF2446UO_KY2_001.jpg","z":["S","M","L"]},{"k":"NERO","b":"99836001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4ed4e671/hi-res/CF2446UO_BK1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"99836003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8932893c/hi-res/CF2446UO_BG2_001.jpg","z":["S","M","XL"]}]},{"i":"5T4442UOAX15","n":"Jeans cargo","d":"Jeans realizzato in 100% cotone  modello cargo con impunture a contrasto  vestibilità: loose fit. La taglia in foto è una 48  altezza modello: 187 cm.","c":"Jeans","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-cargo/03495002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw22c17545/hi-res/5T4442UOAX15_D00G_001.jpg","v":[{"k":"D00G GREY","b":"03495002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw22c17545/hi-res/5T4442UOAX15_D00G_001.jpg","z":["42","46","50","52","54","48"]},{"k":"D000 BLACK","b":"03495001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw950279d1/hi-res/5T4442UOAX15_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D005 LIGHT BLUE","b":"03495004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa3ebfee3/hi-res/5T4442UOAX15_D005_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D003 MEDIUM BLUE","b":"03495003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd28a1bc8/hi-res/5T4442UOAX15_D003_001.jpg","z":["42","44","46","50","52","48"]}]},{"i":"5T0103UOAX15","n":"Jeans straight fit","d":"Jeans realizzato in 100% cotone  disponibile in diversi lavaggi  con gamba dritta dal fianco alla caviglia  con un taglio che non si stringe né si allarga. Vita media. Tessuto rigi","c":"Jeans","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-straight-fit/03509005.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe9cc7137/hi-res/5T0103UOAX15_D001_001.jpg","v":[{"k":"D001 DEEP BLUE","b":"03509005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe9cc7137/hi-res/5T0103UOAX15_D001_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D005 LIGHT BLUE","b":"03509001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw877b1a03/hi-res/5T0103UOAX15_D005_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D007 LIGHT AZURE","b":"03509004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw2e27399a/hi-res/5T0103UOAX15_D007_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"03509002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfaea2a69/hi-res/5T0103UOAX15_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D006 AZURE","b":"03509003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8c683fe5/hi-res/5T0103UOAX15_D006_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T0062UOAX16","n":"Jeans super baggy","d":"","c":"Jeans","p":"35.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-super-baggy/06296002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw10fc1443/hi-res/5T0062UOAX16_D100_001.jpg","v":[{"k":"D100 BLUE DARK OVERDYE","b":"06296002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw10fc1443/hi-res/5T0062UOAX16_D100_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D00G GREY","b":"06296006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf429938b/hi-res/5T0062UOAX16_D00G_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D004 MEDIUM LIGHT BLUE","b":"06296001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb7f64d10/hi-res/5T0062UOAX16_D004_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D001 DEEP BLUE","b":"06296004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc7a5e9f3/hi-res/5T0062UOAX16_D001_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"06296005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf1ab65d8/hi-res/5T0062UOAX16_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D201 AZZURRE MED OVERDYE","b":"06296003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7079352e/hi-res/5T0062UOAX16_D201_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T0149UOAY16","n":"Jeans super baggy fit","d":"Jeans realizzato in cotone  disponibile in diversi lavaggi. Vestibilità: super baggy fit  con cavallo basso  ampi sia sui fianchi che sulla gamba. La taglia in foto è una 48. Altez","c":"Jeans","p":"35.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-super-baggy-fit/05444004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwcebb6101/hi-res/5T0149UOAY16_D00G_001.jpg","v":[{"k":"D00G GREY","b":"05444004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwcebb6101/hi-res/5T0149UOAY16_D00G_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D001 DEEP BLUE","b":"05444001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw577b045e/hi-res/5T0149UOAY16_D001_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D004 MEDIUM LIGHT BLUE","b":"05444003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw32b3ee04/hi-res/5T0149UOAY16_D004_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D008 SUPER LIGHT BLUE","b":"05444002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw675056d1/hi-res/5T0149UOAY16_D008_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T3890UOAX16","n":"Jeans skinny fit","d":"","c":"Jeans","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-skinny-fit/05941004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw378e6cac/hi-res/5T3890UOAX16_D201_001.jpg","v":[{"k":"D201 AZZURRE MED OVERDYE","b":"05941004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw378e6cac/hi-res/5T3890UOAX16_D201_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"05941006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw75b41368/hi-res/5T3890UOAX16_D000_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T4127UOY13","n":"Jeans carrot fit in denim stretch","d":"Jeans in denim stretch  vestibilità: loose cropped fit. La taglia in foto è una 48. Altezza modello 186 cm.","c":"Jeans","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-carrot-fit-in-denim-stretch/55644001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw41145be5/hi-res/5T4127UOY13_D007_001.jpg","v":[{"k":"D007 LIGHT AZURE","b":"55644001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw41145be5/hi-res/5T4127UOY13_D007_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D002 MEDIUM DARK BLUE","b":"55644004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw2d24d2c6/hi-res/5T4127UOY13_D002_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D006 AZURE","b":"55644002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw5a04446c/hi-res/5T4127UOY13_D006_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D003 MEDIUM BLUE","b":"55644005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw6f448b67/hi-res/5T4127UOY13_D003_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D001 DEEP BLUE","b":"55644003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw5ecde89d/hi-res/5T4127UOY13_D001_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"55644006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwcc323836/hi-res/5T4127UOY13_D000_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T0114UOAX15","n":"Jeans cargo","d":"Jeans realizzato in 100% cotone  modello cargo con tasconi applicati e con patta  disponibile in tre lavaggi. La taglia in foto è una 48  altezza modello: 187 cm.","c":"Jeans","p":"39.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-cargo/03664002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw17e6c5d0/hi-res/5T0114UOAX15_D00G_001.jpg","v":[{"k":"D00G GREY","b":"03664002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw17e6c5d0/hi-res/5T0114UOAX15_D00G_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"03664003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwbc032b96/hi-res/5T0114UOAX15_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D100 BLUE DARK OVERDYE","b":"03664001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw96c17b90/hi-res/5T0114UOAX15_D100_001.jpg","z":["42","44","46","50","52","48"]}]},{"i":"5T0073UOAX16","n":"Pantalone in denim tapered fit","d":"","c":"Jeans","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/pantalone-in-denim-tapered-fit/05918006.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb0a78f4d/hi-res/5T0073UOAX16_D201_001.jpg","v":[{"k":"D201 AZZURRE MED OVERDYE","b":"05918006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb0a78f4d/hi-res/5T0073UOAX16_D201_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"05918002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dweb682864/hi-res/5T0073UOAX16_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D100 BLUE DARK OVERDYE","b":"05918004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8fd09ec5/hi-res/5T0073UOAX16_D100_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D003 MEDIUM BLUE","b":"05918003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw3747945b/hi-res/5T0073UOAX16_D003_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D00G GREY","b":"05918001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw51d58560/hi-res/5T0073UOAX16_D00G_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T0051UOAY16","n":"Pantaloni in denim loose fit","d":"","c":"Jeans","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/pantaloni-in-denim-loose-fit/05549003.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb5482e15/hi-res/5T0051UOAY16_D006_001.jpg","v":[{"k":"D006 AZURE","b":"05549003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb5482e15/hi-res/5T0051UOAY16_D006_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D000 BLACK","b":"05549002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw746770a6/hi-res/5T0051UOAY16_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D00G GREY","b":"05549004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw18022e10/hi-res/5T0051UOAY16_D00G_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D001 DEEP BLUE","b":"05549005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw8cb60963/hi-res/5T0051UOAY16_D001_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"5T0102UOAX15","n":"Jeans balloon fit","d":"Jeans realizzato in 100% cotone  vita con passanti e chiusura con bottone e cerniera. Vestibilità: balloon fit. La taglia in foto è una 48. Altezza modello: 187 cm.","c":"Jeans","p":"19.99","l":"https://www.alcott.eu/it_IT/abbigliamento/jeans/jeans-balloon-fit/03500002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7833d557/hi-res/5T0102UOAX15_D000_001.jpg","v":[{"k":"D000 BLACK","b":"03500002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7833d557/hi-res/5T0102UOAX15_D000_001.jpg","z":["42","44","46","50","52","54","48"]},{"k":"D002 MEDIUM DARK BLUE","b":"03500003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4733053f/hi-res/5T0102UOAX15_D002_001.jpg","z":["42","44","46","50","52","54","48"]}]},{"i":"S10189UOAY16","n":"Pantaloni chino in misto lino","d":"Pantaloni chino in tinta unita con coulisse interna  che permette di regolare la vestibilità in vita senza compromettere l'estetica formale del capo. Realizzati in un pregiato mist","c":"Pantaloni","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-chino-in-misto-lino/04280005.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw86dab126/hi-res/S10189UOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"04280005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw86dab126/hi-res/S10189UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"04280003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb480dc49/hi-res/S10189UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"OFF WHITE","b":"04280001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4b730487/hi-res/S10189UOAY16_WH1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY MEDIO","b":"04280004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw5ee66db5/hi-res/S10189UOAY16_NA2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE CHIARO MELANGE","b":"04280002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb96b9233/hi-res/S10189UOAY16_MBG3_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"S10018UOAY16","n":"Pantaloni Chino slim fit con pinces","d":"Il perfetto connubio tra precisione sartoriale e stile urbano contemporaneo. Questi pantaloni chino si distinguono per il raffinato dettaglio delle pinces sul davanti  che crea un ","c":"Pantaloni","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-chino-slim-fit-con-pinces/04283002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw35fa98a6/hi-res/S10018UOAY16_BG2_001.jpg","v":[{"k":"BEIGE MEDIO","b":"04283002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw35fa98a6/hi-res/S10018UOAY16_BG2_001.jpg","z":["44","46","50","52","54","48"]},{"k":"BLU SCURO","b":"04283001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7f7c1feb/hi-res/S10018UOAY16_BL1_001.jpg","z":["44","46","50","52","54","48"]},{"k":"GRIGIO CHIARO","b":"04283004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7e0b7174/hi-res/S10018UOAY16_GY3_001.jpg","z":["44","46","50","52","54","48"]},{"k":"SALVIA CHIARO","b":"04283003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw1804ded8/hi-res/S10018UOAY16_SG3_001.jpg","z":["44","46","50","52","54","48"]}]},{"i":"PA0298UOAY16","n":"Pantaloni jogger con texture","d":"Pantaloni jogger realizzati in jersey con texture  con vita elasticizzata e regolabile tramite coulisse  tasche laterali  disponibili camicie e canotte coordinate. La taglia in fot","c":"Pantaloni","p":"19.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-jogger-con-texture/04731001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf8559d08/hi-res/PA0298UOAY16_BG2_001.jpg","v":[{"k":"BEIGE MEDIO","b":"04731001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf8559d08/hi-res/PA0298UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"PANNA","b":"04731002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfbce91aa/hi-res/PA0298UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE SCURO","b":"04731004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe59189ea/hi-res/PA0298UOAY16_BR1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"04731003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw99243543/hi-res/PA0298UOAY16_NA1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"S10011UOAY16","n":"Pantaloni chino slim fit","d":"Pantaloni chino twill stretch in cotone. Tasche anteriori e dettaglio di tasche a doppio filetto. Chiusura frontale con cerniera e bottone. Vestibilità: slim fit. La taglia nella f","c":"Pantaloni","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-chino-slim-fit/05185001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb4fe888e/hi-res/S10011UOAY16_BL1_001.jpg","v":[{"k":"BLU SCURO","b":"05185001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb4fe888e/hi-res/S10011UOAY16_BL1_001.jpg","z":["44","46","50","52","54","48"]},{"k":"GRIGIO CHIARO","b":"05185004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc5521e60/hi-res/S10011UOAY16_GY3_001.jpg","z":["44","46","50","52","54","48"]},{"k":"MARRONE MEDIO","b":"05185006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw631435f0/hi-res/S10011UOAY16_BR2_001.jpg","z":["44","46","50","52","54","48"]},{"k":"CREMA CHIARO","b":"05185005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4dd94bef/hi-res/S10011UOAY16_CR3_001.jpg","z":["44","46","50","52","54","48"]}]},{"i":"PA0308UOAY16","n":"Pantaloni jogger in misto lino","d":"Pantaloni realizzati in misto lino con vita elasticizzata e regolabile tramite coulisse  tinta unita. La taglia in foto è una L. Altezza modello: 186 cm.","c":"Pantaloni","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-jogger-in-misto-lino/04505002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw257615af/hi-res/PA0308UOAY16_BG2_001.jpg","v":[{"k":"BEIGE MEDIO","b":"04505002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw257615af/hi-res/PA0308UOAY16_BG2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE SCURO","b":"04505004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd12a5379/hi-res/PA0308UOAY16_BR1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"PANNA","b":"04505003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw57b1aaa1/hi-res/PA0308UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"04505001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwbd18b980/hi-res/PA0308UOAY16_NA1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"PA0284UOAY16","n":"Pantaloni in misto lino con pinces","d":"Pantaloni realizzati in misto lino con pinces in tinta unita  con tasche laterali  vita elasticizzata. La taglia in foto è una L. Altezza modello: 186 cm.","c":"Pantaloni","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-in-misto-lino-con-pinces/04861002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw16d0aaa4/hi-res/PA0284UOAY16_WH2_001.jpg","v":[{"k":"PANNA","b":"04861002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw16d0aaa4/hi-res/PA0284UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"04861003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw63b24e7d/hi-res/PA0284UOAY16_NA1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE SCURO","b":"04861004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw53c6fe8c/hi-res/PA0284UOAY16_BR1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"PA0409UOAY16","n":"Pantaloni balloon fit","d":"Pantaloni morbidi in tinta unita con vita elasticizzata e regolabile tramite coulisse  realizzati in twill  vestibilità: balloon fit. La taglia in foto è una L. Altezza modello: 18","c":"Pantaloni","p":"19.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-balloon-fit/06390003.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw199b00e5/hi-res/PA0409UOAY16_KY2_001.jpg","v":[{"k":"KAKY MEDIO","b":"06390003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw199b00e5/hi-res/PA0409UOAY16_KY2_001.jpg","z":["S","L"]},{"k":"BEIGE MEDIO","b":"06390002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw07033b90/hi-res/PA0409UOAY16_BG2_001.jpg","z":["M","L"]}]},{"i":"PA0053UOAY15","n":"Pantaloni jogger in misto lino","d":"Pantaloni jogger realizzato in misto lino - cotone con vita elasticizzata e regolabile tramite coulisse  tinta unita con tasche laterali ed una sul back. Disponibile in diverse var","c":"Pantaloni","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-jogger-in-misto-lino/01047002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4d9c5c13/hi-res/PA0053UOAY15_KY2_001.jpg","v":[{"k":"KAKY MEDIO","b":"01047002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4d9c5c13/hi-res/PA0053UOAY15_KY2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"PANNA","b":"01047005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfc3282ab/hi-res/PA0053UOAY15_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY MEDIO","b":"01047004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0a7b149b/hi-res/PA0053UOAY15_NA2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MWH1 WHITE MEL DARK","b":"01047001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw05397e8e/hi-res/PA0053UOAY15_MWH1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"01047003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0cc2a882/hi-res/PA0053UOAY15_BG2_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"PA0324UOAY16","n":"Pantaloni in misto lino con pinces","d":"L'eleganza sartoriale incontra la praticità quotidiana in questi pantaloni dal taglio crop contemporaneo. Realizzati in un tessuto leggero e fresco  misto lino e cotone  perfetto p","c":"Pantaloni","p":"29.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-in-misto-lino-con-pinces/04511002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfda43a6b/hi-res/PA0324UOAY16_MBR2_001.jpg","v":[{"k":"MARRONE MEDIO MELANGE","b":"04511002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfda43a6b/hi-res/PA0324UOAY16_MBR2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NERO","b":"04511003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw2cafaea0/hi-res/PA0324UOAY16_BK1_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"OFF WHITE","b":"04511001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwdbd665a4/hi-res/PA0324UOAY16_WH1_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"PA0021UOAY16","n":"Pantaloni Comfort Fit con Coulisse","d":"La freschezza dei tessuti estivi incontra una silhouette morbida e curata in questi pantaloni ideali per la bella stagione. Realizzati in un leggero filato traspirante  si distingu","c":"Pantaloni","p":"25.99","l":"https://www.alcott.eu/it_IT/abbigliamento/pantaloni/pantaloni-comfort-fit-con-coulisse/01250001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw36ff27b4/hi-res/PA0021UOAY16_WH2_001.jpg","v":[{"k":"PANNA","b":"01250001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw36ff27b4/hi-res/PA0021UOAY16_WH2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"MARRONE MEDIO","b":"01250005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4f4c1d54/hi-res/PA0021UOAY16_BR2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"KAKY MEDIO","b":"01250003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwdc99eb6d/hi-res/PA0021UOAY16_KY2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"NAVY MEDIO","b":"01250002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfa6f535b/hi-res/PA0021UOAY16_NA2_001.jpg","z":["S","M","L","XL","XXL"]},{"k":"BEIGE CHIARO","b":"01250004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw02fb6e10/hi-res/PA0021UOAY16_BG3_001.jpg","z":["S","M","L","XL","XXL"]}]},{"i":"CG0027DOAY16","n":"Cardigan con zip cappuccio soft touch","d":"","c":"Felpe","p":"27.99","l":"https://www.alcott.eu/it_IT/donna/abbigliamento/felpe/cardigan-con-zip-cappuccio-soft-touch/05325003.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw01020025/hi-res/CG0027DOAY16_BR1_001.jpg","v":[{"k":"MARRONE SCURO","b":"05325003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw01020025/hi-res/CG0027DOAY16_BR1_001.jpg","z":["XS","S","M","L","XL"]},{"k":"BORDEAUX SCURO","b":"05325004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw494dbbca/hi-res/CG0027DOAY16_BO1_001.jpg","z":["XS","S","M","L","XL"]}]},{"i":"FE0000UOAX16","n":"Felpa con cappuccio boxy fit","d":"","c":"Felpe","p":"22.99","l":"https://www.alcott.eu/it_IT/uomo/abbigliamento/felpe/felpa-con-cappuccio-boxy-fit/05394010.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe90f6bb9/hi-res/FE0000UOAX16_KY2_001.jpg","v":[{"k":"KAKY MEDIO","b":"05394010","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe90f6bb9/hi-res/FE0000UOAX16_KY2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"BORDEAUX SCURO","b":"05394006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw26034b88/hi-res/FE0000UOAX16_BO1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"05394008","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw34918720/hi-res/FE0000UOAX16_BG2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"VERDE SCURO","b":"05394003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw30a8d6b5/hi-res/FE0000UOAX16_GN1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"ROSSO MEDIO","b":"05394013","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw634f8b7b/hi-res/FE0000UOAX16_RD2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"PANNA","b":"05394004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwfbdd1f80/hi-res/FE0000UOAX16_WH2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"MARRONE MEDIO","b":"05394009","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw53f37a39/hi-res/FE0000UOAX16_BR2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"05394002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf405c9f4/hi-res/FE0000UOAX16_NA1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"NERO","b":"05394001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw2c20919f/hi-res/FE0000UOAX16_BK1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"GRIGIO CHIARO MELANGE","b":"05394005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwbf89a9a3/hi-res/FE0000UOAX16_MGY3_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"GRIGIO SCURO","b":"05394007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw29f584d3/hi-res/FE0000UOAX16_GY1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"MARRONE SCURO","b":"05394012","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw66aca0ba/hi-res/FE0000UOAX16_BR1_001.jpg","z":["XS","S","M","L","XL","XXL"]}]},{"i":"FE0178DOAY16","n":"Felpa soft touch","d":"Felpa girocollo realizzata in tessuto scuba in tinta unita. Il tessuto scuba  o anche conosciuto come neoprene  è un tessuto super morbido al tatto  elastico  resistente agli urti ","c":"Felpe","p":"22.99","l":"https://www.alcott.eu/it_IT/donna/abbigliamento/felpe/felpa-soft-touch/05327004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw80523817/hi-res/FE0178DOAY16_BR1_001.jpg","v":[{"k":"MARRONE SCURO","b":"05327004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw80523817/hi-res/FE0178DOAY16_BR1_001.jpg","z":["XS","S","M","L","XL"]},{"k":"BORDEAUX SCURO","b":"05327005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7a97ef7f/hi-res/FE0178DOAY16_BO1_001.jpg","z":["XS","S","M","L","XL"]}]},{"i":"FE0210UOAX16","n":"Felpa girocollo basica boxy fit","d":"","c":"Felpe","p":"19.99","l":"https://www.alcott.eu/it_IT/uomo/abbigliamento/felpe/felpa-girocollo-basica-boxy-fit/05395007.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa19ec80d/hi-res/FE0210UOAX16_BG2_001.jpg","v":[{"k":"BEIGE MEDIO","b":"05395007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa19ec80d/hi-res/FE0210UOAX16_BG2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"BORDEAUX SCURO","b":"05395005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf723cc25/hi-res/FE0210UOAX16_BO1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"MARRONE MEDIO","b":"05395008","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw3942eafe/hi-res/FE0210UOAX16_BR2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"GRIGIO CHIARO MELANGE","b":"05395004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw284ef482/hi-res/FE0210UOAX16_MGY3_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"NAVY SCURO","b":"05395002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw9a190381/hi-res/FE0210UOAX16_NA1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"KAKY MEDIO","b":"05395009","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb7022048/hi-res/FE0210UOAX16_KY2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"NERO","b":"05395001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw704fb068/hi-res/FE0210UOAX16_BK1_001.jpg","z":["XS","S","M","L","XL","XXL"]}]},{"i":"CG0000UOAX16","n":"Cardigan basico boxy fit","d":"","c":"Felpe","p":"29.99","l":"https://www.alcott.eu/it_IT/uomo/abbigliamento/felpe/cardigan-basico-boxy-fit/05393002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa4a92ab9/hi-res/CG0000UOAX16_NA1_001.jpg","v":[{"k":"NAVY SCURO","b":"05393002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa4a92ab9/hi-res/CG0000UOAX16_NA1_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"KAKY MEDIO","b":"05393007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb68bcafe/hi-res/CG0000UOAX16_KY2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"MARRONE MEDIO","b":"05393006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe7a5a69c/hi-res/CG0000UOAX16_BR2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"GRIGIO MEDIO","b":"05393008","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw95140d36/hi-res/CG0000UOAX16_GY2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"PANNA","b":"05393003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf6302c01/hi-res/CG0000UOAX16_WH2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"BEIGE MEDIO","b":"05393005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwcfabb06e/hi-res/CG0000UOAX16_BG2_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"GRIGIO CHIARO MELANGE","b":"05393004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0353a199/hi-res/CG0000UOAX16_MGY3_001.jpg","z":["XS","S","M","L","XL","XXL"]},{"k":"NERO","b":"05393001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4296359f/hi-res/CG0000UOAX16_BK1_001.jpg","z":["XS","S","M","L","XL","XXL"]}]},{"i":"FE0202UOAY15","n":"Felpa boxy fit Dungeons & Dragons / Alcott","d":"Felpa realizzata in 100% cotone garzato con cappuccio e tasca a marsupio  con stampa Dungeons & Dragons  License  vestibilità: boxy fit. La taglia in foto è una L. Altezza modello:","c":"Felpe","p":"15.99","l":"https://www.alcott.eu/it_IT/uomo/abbigliamento/felpe/felpa-boxy-fit-dungeons-and-dragons-%2F-alcott/02182001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe2e6dc28/hi-res/FE0202UOAY15_BK1_001.jpg","v":[{"k":"NERO","b":"02182001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe2e6dc28/hi-res/FE0202UOAY15_BK1_001.jpg","z":["S","M","L"]}]},{"i":"FE0438UOAY16","n":"Felpa boxy fit con stampa Basket","d":"Felpa realizzata in cotone garzato con stampa Basket  con cappuccio e tasca frontale a marsupio  polsini e fondo in rib  vestibilità: boxy fit. La taglia in foto è una L. Altezza m","c":"Felpe","p":"35.99","l":"https://www.alcott.eu/it_IT/uomo/abbigliamento/felpe/felpa-boxy-fit-con-stampa-basket/06424001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw99f3262e/hi-res/FE0438UOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"06424001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw99f3262e/hi-res/FE0438UOAY16_BK1_001.jpg","z":["XS","S","M","L","XL","XXL"]}]},{"i":"SN0177UOAY16","n":"Sandali bassi effetto pelle con suola in suede","d":"Completa i tuoi outfit estivi con questi sandali flat modello slide  la calzatura ideale per unire un'estetica informale a una comodità eccezionale. Realizzati con due robuste fasc","c":"Scarpe","p":"19.99","l":"https://www.alcott.eu/it_IT/uomo/scarpe/sandali-bassi-effetto-pelle-con-suola-in-suede/04904002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4ad67aed/hi-res/SN0177UOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"04904002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4ad67aed/hi-res/SN0177UOAY16_BK1_001.jpg","z":["40","41","42","43","44","45"]},{"k":"MARRONE SCURO","b":"04904001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0d23d15d/hi-res/SN0177UOAY16_BR1_001.jpg","z":["40","41","42","43","44","45"]}]},{"i":"ST0031DOAY16","n":"Stivaletti effetto pelle traforati","d":"Stivaletti camperos alti alla caviglia effetto pelle  traforati  con chiusura laterale tramite zip.","c":"Scarpe","p":"19.99","l":"https://www.alcott.eu/it_IT/donna/scarpe/stivaletti-effetto-pelle-traforati/06274001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe967e65e/hi-res/ST0031DOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"06274001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwe967e65e/hi-res/ST0031DOAY16_BK1_001.jpg","z":["38","39","40","41","36","37"]}]},{"i":"ST0330DOAY16","n":"Stivali camperos con ricami","d":"Stivali modello camperos con tacco basso  ricami e zip laterale.","c":"Scarpe","p":"39.99","l":"https://www.alcott.eu/it_IT/donna/scarpe/stivali-camperos-con-ricami/04010003.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc952bd5e/hi-res/ST0330DOAY16_BR3_001.jpg","v":[{"k":"MARRONE CHIARO","b":"04010003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwc952bd5e/hi-res/ST0330DOAY16_BR3_001.jpg","z":["38","39","40","41","36","37"]},{"k":"BEIGE MEDIO","b":"04010002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw70285b6e/hi-res/ST0330DOAY16_BG2_001.jpg","z":["38","39","40","41","36","37"]},{"k":"NERO","b":"04010001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw7a1ada3e/hi-res/ST0330DOAY16_BK1_001.jpg","z":["38","39","40","41","36","37"]}]},{"i":"SC0118DOAY16","n":"Mocassini in suede","d":"Mocassini in suede con lacci  modello classico  suola in gomma. Disponibili in due varianti colore.","c":"Scarpe","p":"8.99","l":"https://www.alcott.eu/it_IT/donna/scarpe/mocassini-in-suede/06279002.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw87449dd6/hi-res/SC0118DOAY16_BG3_001.jpg","v":[{"k":"BEIGE CHIARO","b":"06279002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw87449dd6/hi-res/SC0118DOAY16_BG3_001.jpg","z":["37"]},{"k":"TABACCO MEDIO","b":"06279001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwf278ba1e/hi-res/SC0118DOAY16_TB2_001.jpg","z":["36"]}]},{"i":"SC0126DOAY16","n":"Ballerine con borchie","d":"Scarpe ballerine con borchie applicate e doppio cinturino. Disponibili in due varianti colore.","c":"Scarpe","p":"12.99","l":"https://www.alcott.eu/it_IT/donna/scarpe/ballerine-con-borchie/06347001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw602a89e6/hi-res/SC0126DOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"06347001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw602a89e6/hi-res/SC0126DOAY16_BK1_001.jpg","z":["38","39","37"]},{"k":"OFF WHITE","b":"06347002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd6bfec05/hi-res/SC0126DOAY16_WH1_001.jpg","z":["38","39","37","36"]}]},{"i":"SC0122DOAY16","n":"Ballerine bicolore con doppio cinturino","d":"Scarpe ballerine basse effetto pelle con doppio cinturino  bicolori. Disponibili in due varianti colore.","c":"Scarpe","p":"8.99","l":"https://www.alcott.eu/it_IT/donna/scarpe/ballerine-bicolore-con-doppio-cinturino/06283001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw96c81dde/hi-res/SC0122DOAY16_WH1_001.jpg","v":[{"k":"OFF WHITE","b":"06283001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw96c81dde/hi-res/SC0122DOAY16_WH1_001.jpg","z":["40","36"]},{"k":"BEIGE MEDIO","b":"06283002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw455d341e/hi-res/SC0122DOAY16_BG2_001.jpg","z":["40","41","37","36"]}]},{"i":"SN0000UOAY16","n":"Ciabatte Slide in Gomma Morbida","d":"Massimo comfort e stile minimale si uniscono in queste ciabatte modello slide  perfette per i momenti di relax in casa  in piscina o al mare. Realizzate interamente in un materiale","c":"Scarpe","p":"12.99","l":"https://www.alcott.eu/it_IT/uomo/scarpe/ciabatte-slide-in-gomma-morbida/04729001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw25377347/hi-res/SN0000UOAY16_BK1_001.jpg","v":[{"k":"NERO","b":"04729001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw25377347/hi-res/SN0000UOAY16_BK1_001.jpg","z":["40","44"]},{"k":"MARRONE MEDIO","b":"04729004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwab2ad859/hi-res/SN0000UOAY16_BR2_001.jpg","z":["40","42","44","46"]},{"k":"BEIGE MEDIO","b":"04729002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw70d9bdf6/hi-res/SN0000UOAY16_BG2_001.jpg","z":["42","44"]},{"k":"NAVY MEDIO","b":"04729005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw4a00f0c5/hi-res/SN0000UOAY16_NA2_001.jpg","z":["40","42","44","46"]},{"k":"OFF WHITE","b":"04729003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwbeba3885/hi-res/SN0000UOAY16_WH1_001.jpg","z":["40","42","44","46"]}]},{"i":"SN192UOY13","n":"Infradito con logo a constrasto","d":"","c":"Scarpe","p":"10.99","l":"https://www.alcott.eu/it_IT/uomo/scarpe/infradito-con-logo-a-constrasto/59777004.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw1716b934/hi-res/SN192UOY13_GY3_001.jpg","v":[{"k":"GRIGIO CHIARO","b":"59777004","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw1716b934/hi-res/SN192UOY13_GY3_001.jpg","z":["40","41","42","43","44","45","46"]},{"k":"KAKY MEDIO","b":"59777005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0be12cbe/hi-res/SN192UOY13_KY2_001.jpg","z":["40","41","42","43","44","45","46"]},{"k":"VERDE MEDIO","b":"59777006","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0bedadb1/hi-res/SN192UOY13_GN2_001.jpg","z":["40","41","42","43","45"]},{"k":"ROYALE MEDIO","b":"59777008","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwb7101fd7/hi-res/SN192UOY13_RY2_001.jpg","z":["40","41","42","43","45","46"]},{"k":"OFF WHITE","b":"59777001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwd1895662/hi-res/SN192UOY13_WH1_001.jpg","z":["40","41","42","43","45","46"]},{"k":"NAVY MEDIO","b":"59777002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw55f2eba6/hi-res/SN192UOY13_NA2_001.jpg","z":["40","41","42","43","45"]},{"k":"NERO","b":"59777003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw85b74bf1/hi-res/SN192UOY13_BK1_001.jpg","z":["41","42","43","45","46"]},{"k":"ARANCIONE MEDIO","b":"59777007","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwa24903e4/hi-res/SN192UOY13_OR2_001.jpg","z":["40","41","42","43","44","45"]}]},{"i":"SC0022UOAX15","n":"Sneakers con logo a contrasto","d":"Scarpe sneakers con lacci  suola e logo a contrasto.","c":"Scarpe","p":"15.99","l":"https://www.alcott.eu/it_IT/uomo/scarpe/sneakers-con-logo-a-contrasto/03592001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0c85ddbf/hi-res/SC0022UOAX15_GY2_001.jpg","v":[{"k":"GRIGIO MEDIO","b":"03592001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw0c85ddbf/hi-res/SC0022UOAX15_GY2_001.jpg","z":["40","41","42","43","44"]},{"k":"NERO","b":"03592003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw5182aa23/hi-res/SC0022UOAX15_BK1_001.jpg","z":["40","41","42","44"]},{"k":"OFF WHITE","b":"03592002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dwcf0039ca/hi-res/SC0022UOAX15_WH1_001.jpg","z":["40"]}]},{"i":"SC0014UOAY16","n":"Scarpe Mocassino in Tela con Lacci","d":"Unisci comfort assoluto e un'estetica casual con queste scarpe stile mocassino  la calzatura ideale per completare i tuoi look informali della bella stagione. Realizzate con una to","c":"Scarpe","p":"25.99","l":"https://www.alcott.eu/it_IT/uomo/scarpe/scarpe-mocassino-in-tela-con-lacci/04732001.html","m":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw69f5aa40/hi-res/SC0014UOAY16_NA2_001.jpg","v":[{"k":"NAVY MEDIO","b":"04732001","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw69f5aa40/hi-res/SC0014UOAY16_NA2_001.jpg","z":["40","41","42","43","44","45"]},{"k":"KAKY MEDIO","b":"04732002","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw459e42f2/hi-res/SC0014UOAY16_KY2_001.jpg","z":["40","41","42","43","44","45"]},{"k":"MARRONE MEDIO","b":"04732005","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw99caf3c4/hi-res/SC0014UOAY16_BR2_001.jpg","z":["40","41","42","43","44","45"]},{"k":"BEIGE MEDIO","b":"04732003","g":"https://www.alcott.eu/on/demandware.static/-/Sites-catalog-alcott-master/default/dw32947aea/hi-res/SC0014UOAY16_BG2_001.jpg","z":["41","42","43","44","45"]}]}];
+
+const CAT_ORDER = ['T-Shirt','Camicie','Pantaloni','Jeans','Scarpe','Felpe','Special'];
+const CAT_LABELS = {
+  'T-Shirt':'T-Shirt & Top','Camicie':'Camicie','Pantaloni':'Pantaloni',
+  'Jeans':'Jeans','Scarpe':'Scarpe','Felpe':'Felpe','Special':'Collab & Special'
+};
+const PAGE_SIZE = 80;
+
+let _filter = 'All';
+let _debugMode = false;
+let _product = null;   // product open in modal
+let _colorIdx = 0;     // selected color index
+let _size = null;      // selected size
+let _cart = [];        // { sku, name, color, size, img, price }
+let _filtered = [];
+let _page = 1;
+let _pendingPayload = null;
+
+(function init() {
+  buildFilterBar();
+  applyFilters();
+})();
+
+function buildFilterBar() {
+  const counts = {};
+  for (const p of CATALOG) counts[p.c] = (counts[p.c] || 0) + 1;
+  const cats = ['All', ...CAT_ORDER.filter(c => counts[c])];
+  document.getElementById('filterBar').innerHTML = cats.map(c => {
+    const label = c === 'All' ? 'Tutti' : (CAT_LABELS[c] || c);
+    const cnt = c === 'All' ? CATALOG.length : (counts[c] || 0);
+    return `<button class="filter-chip${c === _filter ? ' active' : ''}" onclick="setFilter('${c}')">${label}<span class="chip-count">${cnt}</span></button>`;
+  }).join('');
+}
+
+function setFilter(cat) {
+  _filter = cat;
+  document.querySelectorAll('.filter-chip').forEach(el => {
+    const label = el.childNodes[0].textContent.trim();
+    const expected = cat === 'All' ? 'Tutti' : (CAT_LABELS[cat] || cat);
+    el.classList.toggle('active', label === expected);
+  });
+  _page = 1;
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  _filtered = CATALOG.filter(p => {
+    const catOk = _filter === 'All' || p.c === _filter;
+    const searchOk = !q || p.n.toLowerCase().includes(q) || (CAT_LABELS[p.c]||p.c).toLowerCase().includes(q);
+    return catOk && searchOk;
+  });
+  _page = 1;
+  renderGrid();
+}
+
+// ── GRID ─────────────────────────────────────────────────────────────────────
+function cartSkus() { return new Set(_cart.map(x => x.sku)); }
+
+function renderGrid() {
+  const visible = _filtered.slice(0, _page * PAGE_SIZE);
+  const remaining = _filtered.length - visible.length;
+  const skus = cartSkus();
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyMsg');
+  const lmWrap = document.getElementById('loadMoreWrap');
+  if (!_filtered.length) { grid.innerHTML = ''; empty.style.display = ''; lmWrap.style.display = 'none'; return; }
+  empty.style.display = 'none';
+  // a product tile is "selected" if ANY of its variants is in cart
+  const selectedGroups = new Set(_cart.map(x => x.groupId));
+  grid.innerHTML = visible.map((p, idx) => {
+    const back = p.v && p.v.length > 1 ? p.v[1].g : p.m;
+    const sel = selectedGroups.has(p.i) ? ' selected' : '';
+    return `<div class="product-tile${sel}" id="tile-${p.i}" onclick="openModal('${p.i}')">
+      <img class="tile-img" src="${esc(p.m)}" alt="${esc(p.n)}" loading="${idx < 9 ? 'eager' : 'lazy'}"/>
+      <img class="tile-back" src="${esc(back)}" alt="" loading="lazy"/>
+      <div class="tile-overlay">
+        <div class="tile-name">${esc(p.n)}</div>
+        <div class="tile-price">€${p.p || '—'}</div>
+      </div>
+      <div class="tile-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    </div>`;
+  }).join('');
+  lmWrap.style.display = remaining > 0 ? '' : 'none';
+  if (remaining > 0) document.getElementById('loadMoreCount').textContent = `(${remaining} rimasti)`;
+}
+
+function loadMore() {
+  _page++;
+  const selectedGroups = new Set(_cart.map(x => x.groupId));
+  const newItems = _filtered.slice((_page - 1) * PAGE_SIZE, _page * PAGE_SIZE);
+  const remaining = _filtered.length - _page * PAGE_SIZE;
+  const grid = document.getElementById('grid');
+  newItems.forEach(p => {
+    const back = p.v && p.v.length > 1 ? p.v[1].g : p.m;
+    const sel = selectedGroups.has(p.i) ? ' selected' : '';
+    const div = document.createElement('div');
+    div.className = `product-tile${sel}`; div.id = `tile-${p.i}`;
+    div.setAttribute('onclick', `openModal('${p.i}')`);
+    div.innerHTML = `<img class="tile-img" src="${esc(p.m)}" alt="${esc(p.n)}" loading="lazy"/>
+      <img class="tile-back" src="${esc(back)}" alt="" loading="lazy"/>
+      <div class="tile-overlay"><div class="tile-name">${esc(p.n)}</div><div class="tile-price">€${p.p || '—'}</div></div>
+      <div class="tile-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>`;
+    grid.appendChild(div);
+  });
+  document.getElementById('loadMoreCount').textContent = remaining > 0 ? `(${remaining} rimasti)` : '';
+  if (remaining <= 0) document.getElementById('loadMoreWrap').style.display = 'none';
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  const p = CATALOG.find(x => x.i === id);
+  if (!p) return;
+  _product = p;
+  _colorIdx = 0;
+  _size = null;
+  document.getElementById('modalCat').textContent = CAT_LABELS[p.c] || p.c;
+  document.getElementById('modalName').textContent = p.n;
+  document.getElementById('modalPrice').textContent = p.p ? `€${p.p}` : '';
+  document.getElementById('modalDesc').textContent = p.d || '';
+  document.getElementById('btnSite').href = p.l;
+  renderColorRow();
+  renderSizeRow();
+  syncAddBtn();
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function renderColorRow() {
+  const p = _product;
+  const colors = p.v || [];
+  document.getElementById('colorLabel').textContent = colors[_colorIdx]?.k || '';
+  document.getElementById('modalImg').src = colors[_colorIdx]?.g || p.m;
+  if (colors.length <= 1) { document.getElementById('colorSection').style.display = 'none'; return; }
+  document.getElementById('colorSection').style.display = '';
+  document.getElementById('colorRow').innerHTML = colors.map((c, i) =>
+    `<button class="color-chip${i === _colorIdx ? ' active' : ''}" onclick="selectColor(${i})">${esc(c.k)}</button>`
+  ).join('');
+}
+
+function selectColor(idx) {
+  _colorIdx = idx;
+  _size = null;
+  renderColorRow();
+  renderSizeRow();
+  syncAddBtn();
+}
+
+function renderSizeRow() {
+  const sizes = _product.v?.[_colorIdx]?.z || [];
+  if (!sizes.length) { document.getElementById('sizeSection').style.display = 'none'; return; }
+  document.getElementById('sizeSection').style.display = '';
+  document.getElementById('sizeRow').innerHTML = sizes.map(s =>
+    `<button class="size-chip${s === _size ? ' active' : ''}" onclick="selectSize('${s}')">${esc(s)}</button>`
+  ).join('');
+}
+
+function selectSize(s) {
+  _size = s;
+  document.querySelectorAll('.size-chip').forEach(el => el.classList.toggle('active', el.textContent === s));
+  syncAddBtn();
+}
+
+function currentSku() {
+  if (!_product) return null;
+  const color = _product.v?.[_colorIdx];
+  if (!color) return null;
+  const hasSizes = color.z && color.z.length > 0;
+  if (hasSizes && !_size) return null;
+  return hasSizes ? `${color.b}_${_size}` : color.b;
+}
+
+function syncAddBtn() {
+  const sku = currentSku();
+  const btn = document.getElementById('btnAdd');
+  if (!sku) {
+    const hasSizes = _product?.v?.[_colorIdx]?.z?.length > 0;
+    btn.textContent = hasSizes ? 'Scegli la taglia' : '+ Aggiungi alla selezione';
+    btn.disabled = !sku && hasSizes;
+    btn.classList.remove('added');
+    return;
+  }
+  btn.disabled = false;
+  const inCart = _cart.some(x => x.sku === sku);
+  btn.textContent = inCart ? '✓ Nella selezione' : '+ Aggiungi alla selezione';
+  btn.classList.toggle('added', inCart);
+}
+
+function overlayClick(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); _product = null; }
+
+// ── SELECTION ────────────────────────────────────────────────────────────────
+function toggleSelect() {
+  const sku = currentSku();
+  if (!sku) return;
+  const p = _product;
+  const color = p.v?.[_colorIdx];
+  const idx = _cart.findIndex(x => x.sku === sku);
+  if (idx >= 0) {
+    _cart.splice(idx, 1);
+  } else {
+    _cart.push({ sku, groupId: p.i, name: p.n, color: color?.k || '', size: _size || '', img: color?.g || p.m, price: p.p });
+  }
+  syncAddBtn();
+  updateFab();
+  const selectedGroups = new Set(_cart.map(x => x.groupId));
+  const tile = document.getElementById(`tile-${p.i}`);
+  if (tile) tile.classList.toggle('selected', selectedGroups.has(p.i));
+}
+
+function updateFab() {
+  document.getElementById('fabBadge').textContent = _cart.length;
+  document.getElementById('fab').classList.toggle('visible', _cart.length > 0);
+}
+
+// ── CART ─────────────────────────────────────────────────────────────────────
+function openCart() { renderCart(); document.getElementById('cartOverlay').classList.add('show'); }
+
+function renderCart() {
+  document.getElementById('cartCount').textContent = _cart.length;
+  const btn = document.getElementById('btnSendCart');
+  btn.textContent = _debugMode ? '🔍 Mostra Payload' : 'Invia al POS';
+  btn.classList.toggle('debug-mode', _debugMode);
+  document.getElementById('cartList').innerHTML = _cart.map(item =>
+    `<div class="cart-item">
+      <img class="cart-item-img" src="${esc(item.img)}" alt="${esc(item.name)}"/>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${esc(item.name)}</div>
+        <div class="cart-item-meta">${esc(item.color)}${item.size ? ' · ' + item.size : ''} · SKU: ${esc(item.sku)}</div>
+      </div>
+      <button class="cart-item-remove" onclick="removeFromCart('${esc(item.sku)}')">&#x2715;</button>
+    </div>`
+  ).join('');
+}
+
+function removeFromCart(sku) {
+  const groupId = _cart.find(x => x.sku === sku)?.groupId;
+  _cart = _cart.filter(x => x.sku !== sku);
+  updateFab();
+  renderCart();
+  if (groupId) {
+    const stillInCart = _cart.some(x => x.groupId === groupId);
+    const tile = document.getElementById(`tile-${groupId}`);
+    if (tile) tile.classList.toggle('selected', stillInCart);
+  }
+  if (_product?.i === groupId) syncAddBtn();
+  if (!_cart.length) closeCart();
+}
+
+function cartOverlayClick(e) { if (e.target === document.getElementById('cartOverlay')) closeCart(); }
+function closeCart() { document.getElementById('cartOverlay').classList.remove('show'); }
+
+// ── SEND ─────────────────────────────────────────────────────────────────────
+function sendCart() {
+  if (!_cart.length) return;
+  const payload = {
+    command: 'AddToCart', debugMode: 0, count: _cart.length,
+    products: _cart.map(x => ({ sku: x.sku, quantity: 1, price: parseFloat(x.price) || 0, currency: 'EUR', image: x.img })),
+  };
+  if (_debugMode) {
+    _pendingPayload = payload;
+    document.getElementById('debugPayload').textContent = JSON.stringify(payload, null, 2);
+    document.getElementById('debugOverlay').classList.add('show');
+    return;
+  }
+  _doSend(payload);
+}
+
+function _doSend(payload) {
+  console.log('[PunchOut AddToCart]', JSON.stringify(payload, null, 2));
+  const n = payload.count;
+  const msg = `${n} articolo${n > 1 ? 'i' : ''} aggiunto${n > 1 ? 'i' : ''} al carrello`;
+  try {
+    window.webkit.messageHandlers.AddToCart.postMessage(JSON.stringify(payload));
+    showToast(msg);
+  } catch(e) {
+    showToast(msg + ' (demo)');
+  }
+  closeCart();
+  _cart = [];
+  updateFab();
+  document.querySelectorAll('.product-tile.selected').forEach(t => t.classList.remove('selected'));
+}
+
+function debugSend() {
+  document.getElementById('debugOverlay').classList.remove('show');
+  if (_pendingPayload) { const p = _pendingPayload; _pendingPayload = null; _doSend(p); }
+}
+function debugCancel() { document.getElementById('debugOverlay').classList.remove('show'); _pendingPayload = null; }
+
+// ── DEBUG ─────────────────────────────────────────────────────────────────────
+function toggleDebug() {
+  _debugMode = !_debugMode;
+  document.getElementById('btnDebug').classList.toggle('active', _debugMode);
+  showToast(_debugMode ? 'Debug ON' : 'Debug OFF');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let _tt;
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 2500);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCart(); } });
+</script>
+</body>
+</html>
