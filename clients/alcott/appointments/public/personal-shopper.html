@@ -283,6 +283,7 @@ function appendProducts(items) {
 }
 
 function openProduct(url) { if (url) window.open(url, '_blank'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function showTyping() {
   const c = document.getElementById('messages');
